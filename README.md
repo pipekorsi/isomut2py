@@ -21,7 +21,7 @@ Fast and accurate detection of both unique and shared mutations in isogenic samp
 ### Step 2: compiling IsoMut2
 
 ```
-git clone https://github.com/genomicshu/IsoMut2.git
+git clone https://github.com/pipekorsi/IsoMut2.git
 cd IsoMut2/src
 
 gcc -c -O3 isomut2_lib.c fisher.c  -W -Wall
