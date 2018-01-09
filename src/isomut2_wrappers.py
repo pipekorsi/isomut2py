@@ -505,7 +505,7 @@ def ploidy_estimation(PEParams, level=0):
 #         plt.close(f)
 
 
-def run_isomut_on_block(chrom,from_pos,to_pos,
+def run_isomut2_on_block(chrom,from_pos,to_pos,
                          input_dir,bam_files,output_dir,
                          ref_genome,
                          min_sample_freq,
@@ -520,7 +520,7 @@ def run_isomut_on_block(chrom,from_pos,to_pos,
                          unique_only,
                          constant_ploidy):
     """
-    Run the samtools + the isomut C application in the system shell.
+    Run the samtools + the isomut2 C application in the system shell.
 
     One run is only on a section of a chromosome.
     With bedfile, only the positions of the bedfile are analyzed.
@@ -545,8 +545,8 @@ def run_isomut_on_block(chrom,from_pos,to_pos,
 
     return subprocess.check_call(cmd,shell=True)
 
-def run_isomut_in_parallel(params, level=0):
-    """ Run an isomut subcommand in parallel on the whole genome."""
+def run_isomut2_in_parallel(params, level=0):
+    """ Run an isomut2 subcommand in parallel on the whole genome."""
     #check for bedfile argument:
     if ('ploidy_info_filepath' not in params):
         params['ploidy_info_filepath']='no_ploidy_info'
@@ -584,7 +584,7 @@ def run_isomut_in_parallel(params, level=0):
     #start first n concurrent block
     procs=[]
     for i in range(params['n_conc_blocks']):
-        procs.append(multiprocessing.Process(target=run_isomut_on_block, args=args[len(procs)]))
+        procs.append(multiprocessing.Process(target=run_isomut2_on_block, args=args[len(procs)]))
         procs[-1].start()
         print(str(len(procs)), end=" ")
         sys.stdout.flush()
@@ -594,7 +594,7 @@ def run_isomut_in_parallel(params, level=0):
         for i in range(1,params['n_conc_blocks']+1):
             #one finished start another one
             if(procs[-i].is_alive() == False and len(procs) != len(args)):
-                procs.append(multiprocessing.Process(target=run_isomut_on_block,args=args[len(procs)] ))
+                procs.append(multiprocessing.Process(target=run_isomut2_on_block,args=args[len(procs)] ))
                 procs[-1].start()
                 print(str(len(procs)), end=" ")
         time.sleep(0.1)
@@ -985,18 +985,18 @@ def plot_heatmap(dataframe, params):
 def print_filtered_results(filtered_table, params):
 
     '''
-        Prints filtered mutation results to the original IsoMut output directory with the name filtered_results.csv.
+        Prints filtered mutation results to the original IsoMut2 output directory with the name filtered_results.csv.
     '''
 
-    IsoMut_results_dir = params['output_dir'] + '/'
+    IsoMut2_results_dir = params['output_dir'] + '/'
     control_samples = params['control_samples']
     total_num_of_FPs_per_genome = params['FPs_per_genome']
 
-    with open(IsoMut_results_dir + 'filtered_results.csv', 'a') as f:
+    with open(IsoMut2_results_dir + 'filtered_results.csv', 'a') as f:
         f.write('# IsoMut2 filtered results - ' + str(datetime.now()).split('.')[0] + '\n')
         f.write('# Original results:\n')
-        f.write('#\t'+ IsoMut_results_dir + 'all_SNVs.isomut2\n')
-        f.write('#\t'+ IsoMut_results_dir + 'all_indels.isomut2\n')
+        f.write('#\t'+ IsoMut2_results_dir + 'all_SNVs.isomut2\n')
+        f.write('#\t'+ IsoMut2_results_dir + 'all_indels.isomut2\n')
         f.write('# Control samples:\n')
         for s in control_samples:
             f.write('#\t'+ s + '\n')
@@ -1013,21 +1013,21 @@ def generate_HTML_report(params, score0=0):
         - Filters results so that a minimal number of unique mutations are left in control samples, while keeping the number of unique mutations
         as high as possible in other samples.
         - Generates HTML report of the filtering process and the filtered results.
-        - Saves filtered results to original IsoMut output directory.
+        - Saves filtered results to original IsoMut2 output directory.
     '''
 
-    IsoMut_results_dir = params['output_dir'] + '/'
+    IsoMut2_results_dir = params['output_dir'] + '/'
     control_samples = params['control_samples']
     sample_names = params['bam_filenames']
     genome_length = params['genome_length']
     total_num_of_FPs_per_genome = params['FPs_per_genome']
 
-    df_SNV = pd.read_csv(IsoMut_results_dir + 'all_SNVs.isomut2',
+    df_SNV = pd.read_csv(IsoMut2_results_dir + 'all_SNVs.isomut2',
                      names = ['sample_name', 'chr', 'pos', 'type', 'score',
                             'ref', 'mut', 'cov', 'mut_freq', 'cleanliness', 'ploidy'],
                      sep='\t',
                      low_memory=False)
-    df_indel = pd.read_csv(IsoMut_results_dir + 'all_indels.isomut2', header=0,
+    df_indel = pd.read_csv(IsoMut2_results_dir + 'all_indels.isomut2', header=0,
                          names = ['sample_name', 'chr', 'pos', 'type', 'score',
                                 'ref', 'mut', 'cov', 'mut_freq', 'cleanliness', 'ploidy'],
                          sep='\t',
@@ -1105,11 +1105,11 @@ def generate_HTML_report(params, score0=0):
             <br>
             Date and time of analysis: ''' + str(datetime.now()).split('.')[0] + ''' <br><br>
             Original IsoMut2 results used: <br>
-            ''' + IsoMut_results_dir + '''all_SNVs.isomut2 <br>
-            ''' + IsoMut_results_dir + '''all_indels.isomut2 <br><br>
+            ''' + IsoMut2_results_dir + '''all_SNVs.isomut2 <br>
+            ''' + IsoMut2_results_dir + '''all_indels.isomut2 <br><br>
             Control samples: ''' + ', '.join(params['control_samples']) + ''' <br><br>
             Maximum number of false positives per genome: ''' + str(total_num_of_FPs_per_genome) + ''' <br><br>
-            Filtered results are saved to: ''' + IsoMut_results_dir + '''filtered_results.csv<br><br>
+            Filtered results are saved to: ''' + IsoMut2_results_dir + '''filtered_results.csv<br><br>
             <h3>Tuning curves:</h3>
             The figures below show the number of <i>unique</i> mutations found in each sample grouped by mutation types and ploidies.
             Control samples are represented with differently colored curves for easier identification. The expected result is
@@ -1167,15 +1167,14 @@ def generate_HTML_report(params, score0=0):
             </body>
         </html>'''
 
-    with open(IsoMut_results_dir+'report.html','w') as f:
+    with open(IsoMut2_results_dir+'report.html','w') as f:
         f.write(html_string)
 
 
-def run_isomut(params):
+def run_isomut2(params):
     """
-    Run IsoMut on the bam files specified in params dict, with params specified in params dict.
+    Run IsoMut2 on the bam files specified in params dict, with params specified in params dict.
 
-    For an example usage check out https://github.com/riblidezso/isomut.
     """
 
     starting_time = datetime.now()
@@ -1188,7 +1187,7 @@ def run_isomut(params):
     ##########################################
     #run first round
     print('Running IsoMut2: round 1/2\n\n')
-    run_isomut_in_parallel(params, level=1)
+    run_isomut2_in_parallel(params, level=1)
 
     ##########################################
     #prepare for 2nd round
@@ -1255,7 +1254,7 @@ def run_isomut(params):
     params['bedfile']=params['output_dir']+'/tmp_isomut2.bed'
 
     #run it
-    run_isomut_in_parallel(params, level=1)
+    run_isomut2_in_parallel(params, level=1)
 
     ##########################################
     #finalize output
