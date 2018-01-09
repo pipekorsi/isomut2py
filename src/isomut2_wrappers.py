@@ -1238,7 +1238,7 @@ def run_isomut2(params):
     #                 nf.write(line_list[0] + '\t' + line_list[1] + '\t' + line_list[2] + '\t' + line_list[6] + '\t' + line_list[9] + '\n')
 
     for init_res in glob.glob(params['output_dir']+'/tmp_isomut2_*_mut.csv'):
-        new_file_name = init_res.split('.')[-2].split('/')[-1] + '_orig.csv'
+        new_file_name = params['output_dir'] + init_res.split('.')[-2].split('/')[-1] + '_orig.csv'
         subprocess.check_call('mv ' + init_res + ' ' + new_file_name, shell=True)
 
     # clean everything else
@@ -1280,7 +1280,7 @@ def run_isomut2(params):
         with open(new_file_name) as f_new:
             # let's collect original cleanliness into a dict first
             cleanliness_dict=dict()
-            old_file_name = new_file_name.split('.')[-2].split('/')[-1] + '_orig.csv'
+            old_file_name = params['output_dir'] + new_file_name.split('.')[-2].split('/')[-1] + '_orig.csv'
             with open(old_file_name) as f_old:
                 f_old.readline() #skip header
                 for line in f_old:
@@ -1292,7 +1292,7 @@ def run_isomut2(params):
             subprocess.check_call('rm ' + old_file_name, shell=True)
             # now we move on to the new files
             f_new.readline() #skip header
-            final_file_name = new_file_name.split('.')[-2].split('/')[-1] + '_final.csv'
+            final_file_name = params['output_dir'] + new_file_name.split('.')[-2].split('/')[-1] + '_final.csv'
             with open(final_file_name,'w') as f_final:
                 f_final.write(header)
                 for line in f_new:
@@ -1315,7 +1315,7 @@ def run_isomut2(params):
     subprocess.check_call(['rm',params['bedfile']])
     # and now we can also remove the new files and the final files too
     subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut.csv',shell=True)
-    #subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut_final.csv',shell=True)
+    subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut_final.csv',shell=True)
     # subprocess.check_call('rm '+params['output_dir']+'/tmp_all_SNVs.isomut',shell=True)
 
     #HTML report
