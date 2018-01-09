@@ -1315,7 +1315,7 @@ def run_isomut2(params):
     subprocess.check_call(['rm',params['bedfile']])
     # and now we can also remove the new files and the final files too
     subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut.csv',shell=True)
-    subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut_final.csv',shell=True)
+    #subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut_final.csv',shell=True)
     # subprocess.check_call('rm '+params['output_dir']+'/tmp_all_SNVs.isomut',shell=True)
 
     #HTML report
