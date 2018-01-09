@@ -1292,7 +1292,7 @@ def run_isomut2(params):
             subprocess.check_call('rm ' + old_file_name, shell=True)
             # now we move on to the new files
             f_new.readline() #skip header
-            final_file_name = new_file_name.split('.')[0] + '_final.csv'
+            final_file_name = new_file_name.split('.')[-2].split('/')[-1] + '_final.csv'
             with open(final_file_name,'w') as f_final:
                 f_final.write(header)
                 for line in f_new:
