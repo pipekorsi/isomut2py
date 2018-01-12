@@ -243,7 +243,7 @@ int get_mplp(struct mplp* my_mplp,char* line, ssize_t line_size){
         my_mplp->pos= (int) strtol(tmp_str,NULL,10);
         //ref nuq
         get_next_entry(line,line_size,&i,&tmp_str);
-        my_mplp->ref_nuq=tmp_str[0];
+        my_mplp->ref_nuq=(char) toupper(tmp_str[0]);
 
         //read samples
         int temp_sample=0;
