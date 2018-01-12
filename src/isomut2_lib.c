@@ -978,6 +978,10 @@ int call_indel_with_pl(struct mplp* saved_mutations, int* mut_ptr, struct mplp* 
         return 0;
     }
 
+    //skip position if the reference base is N
+    if (my_mplp->ref_nuq == 'N'){
+      return 0;
+    }
 
     double sample_indel_freq;
     int sample_idx;
