@@ -773,8 +773,6 @@ int call_snv_with_pl(struct mplp* saved_mutations, int* mut_ptr, struct mplp* my
     int ref_idx=base_2_idx[(int)my_mplp->ref_nuq];
     int alt_idx=base_2_idx[(int)mut_base];
 
-    printf("pos: %d\n", my_mplp->pos);
-
     //updating ploidy values for ALL of the samples
     update_ploidy_all(my_mplp, ploidy_id, next_pos, current_ploidy, max_number_of_ranges, pl_r_array);
 
