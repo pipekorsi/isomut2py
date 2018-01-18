@@ -890,6 +890,7 @@ int get_max_non_ref_freq(struct mplp* my_mplp,double* val, int* idx, char* mut_b
           return 1; //found a noisy sample, ignore position
         }
         else if (my_mplp->freqs[i][ref_idx] > min_other_ref_freq_limit && // clean
+                 my_mplp->freqs[i][alt_idx] < sample_mut_freq_limit*2/current_ploidy[i] && // not really mutated
                  my_mplp->freqs[i][alt_idx] >=0 && my_mplp->freqs[i][ref_idx] >=0){ //and covered
                    number_of_cleans++;
                    if (my_mplp->freqs[i][ref_idx] < lowest_rnf){ //check if noisier than the noisiest so far
