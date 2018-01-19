@@ -1,3 +1,5 @@
+from __future__ import print_function
+from __future__ import division
 import multiprocessing
 import sys
 import time
@@ -1286,7 +1288,7 @@ def run_isomut2(params):
                 for line in f_old:
                     line_list=line.strip().split('\t')
                     if (len(line_list) == 11):
-                        key='_'.join(line_list[:4]+line_list[5:7])
+                        key='_'.join(line_list[1:4]+line_list[5:7])
                         cleanliness_dict[key]=line_list[9]
             # now it's okay to remove the old file
             subprocess.check_call('rm ' + old_file_name, shell=True)
@@ -1297,7 +1299,7 @@ def run_isomut2(params):
                 f_final.write(header)
                 for line in f_new:
                     line_list=line.strip().split('\t')
-                    key='_'.join(line_list[:4]+line_list[5:7])
+                    key='_'.join(line_list[1:4]+line_list[5:7])
                     if key in cleanliness_dict:
                         f_final.write('\t'.join(line_list[:9]+[cleanliness_dict[key]]+[line_list[10]])+'\n')
 
