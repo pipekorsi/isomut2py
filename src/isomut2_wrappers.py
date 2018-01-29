@@ -1018,25 +1018,33 @@ def generate_HTML_report(params, score0=0):
         - Saves filtered results to original IsoMut2 output directory.
     '''
 
+    # first we generate two temporary files with only unique mutations, so that the score optimisation does not need to be run on such huge data files
+
+    subprocess.check_call('cat '+params['output_dir']+'/all_SNVs.isomut2 | awk \'BEGIN{FS="\t"; OFS="\t";}{if($1 !~ /,/) print $0;}\' > ' + params['output_dir'] + '/unique_SNVs.isomut2',shell=True)
+    subprocess.check_call('cat '+params['output_dir']+'/all_indels.isomut2 | awk \'BEGIN{FS="\t"; OFS="\t";}{if($1 !~ /,/) print $0;}\' > ' + params['output_dir'] + '/unique_indels.isomut2',shell=True)
+
     IsoMut2_results_dir = params['output_dir'] + '/'
     control_samples = params['control_samples']
     sample_names = params['bam_filenames']
     genome_length = params['genome_length']
     total_num_of_FPs_per_genome = params['FPs_per_genome']
 
-    df_SNV = pd.read_csv(IsoMut2_results_dir + 'all_SNVs.isomut2',
+    df_SNV = pd.read_csv(IsoMut2_results_dir + 'unique_SNVs.isomut2',
                      names = ['sample_name', 'chr', 'pos', 'type', 'score',
                             'ref', 'mut', 'cov', 'mut_freq', 'cleanliness', 'ploidy'],
                      sep='\t',
                      low_memory=False)
-    df_indel = pd.read_csv(IsoMut2_results_dir + 'all_indels.isomut2', header=0,
+    df_indel = pd.read_csv(IsoMut2_results_dir + 'unique_indels.isomut2', header=0,
                          names = ['sample_name', 'chr', 'pos', 'type', 'score',
                                 'ref', 'mut', 'cov', 'mut_freq', 'cleanliness', 'ploidy'],
                          sep='\t',
                          low_memory=False)
     df = pd.concat([df_SNV, df_indel])
 
-    df_somatic = df[~(df['sample_name'].str.contains(','))]
+    # df_somatic = df[~(df['sample_name'].str.contains(','))]
+    df_somatic = df
+
+    unique_ploidies = sorted(list(df_somatic['ploidy'].unique()))
 
     # all image codes:
     FIG_tuning_curve = plot_tuning_curve(df_somatic, params=params)
@@ -1044,15 +1052,55 @@ def generate_HTML_report(params, score0=0):
     FIG_filtered_muts, df_somatic_filt = plot_filtered_muts(dataframe=df_somatic, score_lims_dict=score_lim_dict,
                                                            params=params)
 
+    # generate files with the filtered results
+    with open(params['output_dir'] + '/filtered_results.csv', 'a') as f:
+        f.write('# IsoMut2 filtered results - ' + str(datetime.now()).split('.')[0] + '\n')
+        f.write('# Original results:\n')
+        f.write('#\t'+ IsoMut2_results_dir + 'all_SNVs.isomut2\n')
+        f.write('#\t'+ IsoMut2_results_dir + 'all_indels.isomut2\n')
+        f.write('# Control samples:\n')
+        for s in control_samples:
+            f.write('#\t'+ s + '\n')
+        f.write('# Total allowed number of false positives per genome: ' + str(total_num_of_FPs_per_genome) + '\n')
+        f.write('#\n')
+        f.write('#sample_name\tchr\tpos\ttype\tscore\tref\tmut\tcov\tmut_freq\tcleanliness\tploidy\n')
+
+    print(score_lim_dict)
+    filter_cmd = 'cat ' + IsoMut2_results_dir + 'all_SNVs.isomut2 | awk \'BEGIN{FS=\"\t\"; OFS=\"\t\";}{'
+    for i in range(len(unique_ploidies)):
+        filter_cmd += 'if ($11 == ' + str(unique_ploidies[i]) + ' && $5 > ' + str(score_lim_dict['SNV'][i]) + ') print $0; '
+    filter_cmd += '}\' >> ' + IsoMut2_results_dir + 'filtered_results.csv'
+
+    subprocess.check_call(filter_cmd,shell=True)
+    subprocess.check_call('rm ' + IsoMut2_results_dir + 'unique_SNVs.isomut2',shell=True)
+
+    filter_cmd = 'cat ' + IsoMut2_results_dir + 'all_indels.isomut2 | awk \'BEGIN{FS=\"\t\"; OFS=\"\t\";}{'
+    for i in range(len(unique_ploidies)):
+        filter_cmd += 'if ($4 == "INS" && $11 == ' + str(unique_ploidies[i]) + ' && $5 > ' + str(score_lim_dict['INS'][i]) + ') print $0; '
+        filter_cmd += 'if ($4 == "DEL" && $11 == ' + str(unique_ploidies[i]) + ' && $5 > ' + str(score_lim_dict['DEL'][i]) + ') print $0; '
+    filter_cmd += '}\' >> ' + IsoMut2_results_dir + 'filtered_results.csv'
+
+    subprocess.check_call(filter_cmd,shell=True)
+    subprocess.check_call('rm ' + IsoMut2_results_dir + 'unique_indels.isomut2',shell=True)
+
+    # read filtered Results
+
+    df = pd.read_csv(IsoMut2_results_dir + 'filtered_results.csv', comment = '#',
+                         names = ['sample_name', 'chr', 'pos', 'type', 'score',
+                                'ref', 'mut', 'cov', 'mut_freq', 'cleanliness', 'ploidy'],
+                         sep='\t',
+                         low_memory=False)
+    df_somatic = df[~(df['sample_name'].str.contains(','))]
+
     # filtered results for the whole datatable
-    df_filtered = get_filtered_results(dataframe=df, score_lims_dict=score_lim_dict)
+    # df_filtered = get_filtered_results(dataframe=df, score_lims_dict=score_lim_dict)
 
     # if non-unique mutations are also detected
     if (df_somatic.shape[0] != df.shape[0]):
-        FIG_heatmap = plot_heatmap(dataframe=df_filtered, params=params)
+        FIG_heatmap = plot_heatmap(dataframe=df, params=params)
 
     # printing filtered results
-    print_filtered_results(filtered_table=df_filtered, params=params)
+    # print_filtered_results(filtered_table=df_filtered, params=params)
 
     # generating HTML report
 
@@ -1289,7 +1337,7 @@ def run_isomut2(params):
                     line_list=line.strip().split('\t')
                     if (len(line_list) == 11):
                         key='_'.join(line_list[1:4]+line_list[5:7])
-                        cleanliness_dict[key]=line_list[9]
+                        cleanliness_dict[key]=[line_list[9], line_list[0]]
             # now it's okay to remove the old file
             subprocess.check_call('rm ' + old_file_name, shell=True)
             # now we move on to the new files
@@ -1301,7 +1349,7 @@ def run_isomut2(params):
                     line_list=line.strip().split('\t')
                     key='_'.join(line_list[1:4]+line_list[5:7])
                     if key in cleanliness_dict:
-                        f_final.write('\t'.join(line_list[:9]+[cleanliness_dict[key]]+[line_list[10]])+'\n')
+                        f_final.write('\t'.join([cleanliness_dict[key][1]]+line_list[1:9]+[cleanliness_dict[key][0]]+[line_list[10]])+'\n')
 
     # now we collect SNVs
     subprocess.check_call(

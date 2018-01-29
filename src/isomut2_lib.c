@@ -882,11 +882,19 @@ int get_max_non_ref_freq(struct mplp* my_mplp,double* val, int* idx, char* mut_b
       //loop over samples to find if there are noisy ones and IF NOT, then which samples are the weakest and the noisiest ones
       for(i=0;i<my_mplp->n_samples;i++)
       {
+        //////////////////////////////////////////
+        // printf("sample number: %d\n", i);
+        //////////////////////////////////////////
+
         my_mplp->mutated_or_not[i] = 0;
         if (my_mplp->freqs[i][alt_idx] < sample_mut_freq_limit*2/current_ploidy[i] && // not really mutated
             my_mplp->freqs[i][ref_idx] < min_other_ref_freq_limit && // not really clean
-            my_mplp->freqs[i][alt_idx] >=0 && my_mplp->freqs[i][ref_idx] >=0) // but definitely covered
+            my_mplp->freqs[i][alt_idx] >=0 && my_mplp->freqs[i][ref_idx] >=0) // but definitely covered - esetleg itt lehet gond?
         {
+          //////////////////////////////////////////
+          // printf("found noisy, quitting!\n");
+          //////////////////////////////////////////
+
           return 1; //found a noisy sample, ignore position
         }
         else if (my_mplp->freqs[i][ref_idx] > min_other_ref_freq_limit && // clean
@@ -897,6 +905,9 @@ int get_max_non_ref_freq(struct mplp* my_mplp,double* val, int* idx, char* mut_b
                      *noisiest_idx=i;
                      lowest_rnf=my_mplp->freqs[i][ref_idx];
                    }
+                   //////////////////////////////////////////
+                   // printf("found clean!\n");
+                   //////////////////////////////////////////
                  }
         else if (my_mplp->freqs[i][alt_idx] >= sample_mut_freq_limit*2/current_ploidy[i] && //sample mutated
                  my_mplp->counts[i][COV_IDX] >= cov_limit){ //and covered sufficiently
@@ -905,23 +916,35 @@ int get_max_non_ref_freq(struct mplp* my_mplp,double* val, int* idx, char* mut_b
             *weakest_idx=i;
             lowest_mutfreq=my_mplp->freqs[i][alt_idx];
           }
+          //////////////////////////////////////////
+          // printf("found mutated!\n");
+          //////////////////////////////////////////
         }
       }
 
       //if no weakest sample was found > no mutated samples at all, skip position
       if (*weakest_idx == -42)
       {
+        //////////////////////////////////////////
+        // printf("weakest ID not found...\n");
+        //////////////////////////////////////////
         return 1;
       }
       //if no noisiest sample was found and also, no clean ones > all of the samples are mutated, special treatment
       if (*noisiest_idx == -42 && number_of_cleans == 0)
       {
         *noisiest_idx = -999;
+        //////////////////////////////////////////
+        // printf("noisiest ID not found, there are no clean samples\n");
+        //////////////////////////////////////////
         return 0;
       }
       //no noisiest sample was found but there ARE clean samples (this should not happen) > skip position
       else if (*noisiest_idx == -42 && number_of_cleans != 0)
       {
+        //////////////////////////////////////////
+        // printf("noisiest ID not found, but there are no clean samples\n");
+        //////////////////////////////////////////
         return 1;
       }
       return 0;
