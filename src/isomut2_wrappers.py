@@ -9,6 +9,9 @@ import os
 import glob
 import pandas as pd
 import numpy as np
+import matplotlib
+# Force matplotlib to not use any Xwindows backend.
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from io import BytesIO
 import base64
@@ -755,7 +758,7 @@ def plot_roc(dataframe, params, score0=0):
                 totalmuts_per_ploidy = dataframe[(dataframe['ploidy'] == pl) & (dataframe['type'] == m)].shape[0]
                 totalmuts = dataframe[(dataframe['type'] == m)].shape[0]
                 if (totalmuts == 0):
-                    FPs_per_ploidy[m][pl] = 100
+                    FPs_per_ploidy[m][pl] = total_num_of_FPs_per_genome
                 else:
                     FPs_per_ploidy[m][pl] = int(round((float(totalmuts_per_ploidy)/totalmuts)*total_num_of_FPs_per_genome))
 
@@ -768,7 +771,7 @@ def plot_roc(dataframe, params, score0=0):
         if (len(unique_ploidies) == 1):
             fp, tp = [0  for k in range(steps)],[0  for k in range(steps)]
             fp_real, tp_real = [0  for k in range(steps)],[0  for k in range(steps)]
-            for score_lim,j in zip(np.linspace(score0,10,steps),range(steps)):
+            for score_lim,j in zip(np.linspace(score0,dataframe[dataframe['type'] == mut_types_all[m]]['score'].max(),steps),range(steps)):
                 muts=[]
                 for s in unique_samples:
                     muts.append(dataframe[(dataframe['ploidy'] == unique_ploidies[0]) &
@@ -776,7 +779,7 @@ def plot_roc(dataframe, params, score0=0):
                                           (dataframe['score'] > score_lim) &
                                           (dataframe['type'] == mut_types_all[m])].shape[0])
                 muts=np.array(muts)
-                fp[j] ,tp[j]=(1./genome_length)*1e3*np.max(muts[control_idx]),(1./genome_length)*1e3*np.mean(muts[treated_idx])
+                fp[j] ,tp[j]=1e-6*np.max(muts[control_idx]),1e-6*np.mean(muts[treated_idx])
                 fp_real[j] ,tp_real[j]=np.max(muts[control_idx]),np.mean(muts[treated_idx])
             axes[m].step(fp,tp,c='#DB7093',lw=3)
             axes[m].set_title(mut_types_all[m] + ' (ploidy: ' + str(int(unique_ploidies[0])) + ')\n', fontsize=14)
@@ -787,12 +790,12 @@ def plot_roc(dataframe, params, score0=0):
                 if (len(tp_real[fp_real<=FPs_per_ploidy[mut_types_all[m]][unique_ploidies[0]]]) > 0):
                     tps = tp_real[fp_real<=FPs_per_ploidy[mut_types_all[m]][unique_ploidies[0]]][0]
                     fps = fp_real[fp_real<=FPs_per_ploidy[mut_types_all[m]][unique_ploidies[0]]][0]
-                    score_lim = np.linspace(score0, 10, steps)[fp_real<=FPs_per_ploidy[mut_types_all[m]][unique_ploidies[0]]][0]
-                    axes[m].plot(fps*(1./genome_length)*1e3,tps*(1./genome_length)*1e3,'o',mec='#C71585',mfc='#C71585',ms=15,mew=3, label = 'score limit: ' + str(score_lim))
+                    score_lim = np.linspace(score0, dataframe[dataframe['type'] == mut_types_all[m]]['score'].max(), steps)[fp_real<=FPs_per_ploidy[mut_types_all[m]][unique_ploidies[0]]][0]
+                    axes[m].plot(fps*1e-6,tps*1e-6,'o',mec='#C71585',mfc='#C71585',ms=15,mew=3, label = 'score limit: ' + str(score_lim))
                     axes[m].text(0.95, 0.06, 'score limit: ' + str(score_lim),
                             bbox={'facecolor':'white', 'pad':10}, verticalalignment='bottom', horizontalalignment='right', transform=axes[m].transAxes)
                 else:
-                    score_lim = 100
+                    score_lim = 10000
                     axes[m].text(0.95, 0.06, 'score limit: inf',
                             bbox={'facecolor':'white', 'pad':10}, verticalalignment='bottom', horizontalalignment='right', transform=axes[m].transAxes)
                 score_lim_dict[mut_types_all[m]].append(score_lim)
@@ -807,7 +810,7 @@ def plot_roc(dataframe, params, score0=0):
             for i in range(len(unique_ploidies)):
                 fp, tp = [0  for k in range(steps)],[0  for k in range(steps)]
                 fp_real, tp_real = [0  for k in range(steps)],[0  for k in range(steps)]
-                for score_lim,j in zip(np.linspace(score0,10,steps),range(steps)):
+                for score_lim,j in zip(np.linspace(score0,dataframe[dataframe['type'] == mut_types_all[m]]['score'].max(),steps),range(steps)):
                     muts=[]
                     for s in unique_samples:
                         muts.append(dataframe[(dataframe['ploidy'] == unique_ploidies[i]) &
@@ -815,7 +818,7 @@ def plot_roc(dataframe, params, score0=0):
                                               (dataframe['score'] > score_lim) &
                                               (dataframe['type'] == mut_types_all[m])].shape[0])
                     muts=np.array(muts)
-                    fp[j] ,tp[j]=(1./genome_length)*1e3*np.max(muts[control_idx]),(1./genome_length)*1e3*np.mean(muts[treated_idx])
+                    fp[j] ,tp[j]=1e-6*np.max(muts[control_idx]),1e-6*np.mean(muts[treated_idx])
                     fp_real[j] ,tp_real[j]=np.max(muts[control_idx]),np.mean(muts[treated_idx])
                 axes[i][m].step(fp,tp,c='#DB7093',lw=3)
                 axes[i][m].set_title(mut_types_all[m] + ' (ploidy: ' + str(int(unique_ploidies[i])) + ')\n', fontsize=14)
@@ -826,12 +829,12 @@ def plot_roc(dataframe, params, score0=0):
                     if (len(tp_real[fp_real<=FPs_per_ploidy[mut_types_all[m]][unique_ploidies[i]]]) > 0):
                         tps = tp_real[fp_real<=FPs_per_ploidy[mut_types_all[m]][unique_ploidies[i]]][0]
                         fps = fp_real[fp_real<=FPs_per_ploidy[mut_types_all[m]][unique_ploidies[i]]][0]
-                        score_lim = np.linspace(score0, 10, steps)[fp_real<=FPs_per_ploidy[mut_types_all[m]][unique_ploidies[i]]][0]
-                        axes[i][m].plot(fps*(1./genome_length)*1e3,tps*(1./genome_length)*1e3,'o',mec='#C71585',mfc='#C71585',ms=15,mew=3, label = 'score limit: ' + str(score_lim))
+                        score_lim = np.linspace(score0, dataframe[dataframe['type'] == mut_types_all[m]]['score'].max(), steps)[fp_real<=FPs_per_ploidy[mut_types_all[m]][unique_ploidies[i]]][0]
+                        axes[i][m].plot(fps*1e-6,tps*1e-6,'o',mec='#C71585',mfc='#C71585',ms=15,mew=3, label = 'score limit: ' + str(score_lim))
                         axes[i][m].text(0.95, 0.06, 'score limit: ' + str(score_lim),
                                 bbox={'facecolor':'white', 'pad':10}, verticalalignment='bottom', horizontalalignment='right', transform=axes[i][m].transAxes)
                     else:
-                        score_lim = 100
+                        score_lim = 10000
                         axes[i][m].text(0.95, 0.06, 'score limit: inf',
                                 bbox={'facecolor':'white', 'pad':10}, verticalalignment='bottom', horizontalalignment='right', transform=axes[i][m].transAxes)
                     score_lim_dict[mut_types_all[m]].append(score_lim)
@@ -858,7 +861,7 @@ def plot_filtered_muts(dataframe, score_lims_dict, params):
         Plots the number of unique mutations found in all the samples in different ploidy regions.
     '''
 
-    unique_samples = params['bam_filenames']
+    unique_samples = sorted(params['bam_filenames'])
 
     list_of_filtered_dataframes = []
     samples = unique_samples
@@ -895,6 +898,8 @@ def plot_filtered_muts(dataframe, score_lims_dict, params):
                     sample_counts=pd.concat([sample_counts,pd.DataFrame({'sample':s, 'count' : [0]})])
                     sample_counts=sample_counts.sort_values(by='sample').reset_index()[['sample','count']]
 
+            sample_counts.sort_values(by='sample')
+
             if (len(unique_ploidies) == 1):
                 a = 1
             else:
@@ -913,9 +918,11 @@ def plot_filtered_muts(dataframe, score_lims_dict, params):
             axes[m].set_title('\nFiltered unique ' + mut_types_all[m] + ' counts grouped by ploidy\n', fontsize=14)
 
         # Set the position of the x ticks
-        axes[m].set_xticks([p -1 + len(unique_ploidies) * 0.5 * width for p in pos])
+        axes[m].set_xticks([p -0.5 + len(unique_ploidies) * 1 * width for p in pos])
         # Set the labels for the x ticks
-        axes[m].set_xticklabels(samples, rotation=30, fontsize=10)
+        sample_labels = ['\n'.join([s[i:i+10] for i in range(0, len(s), 10)]) for s in samples]
+        fs = 8
+        axes[m].set_xticklabels(sample_labels, rotation=90, fontsize=fs)
 
 
         # Setting the x-axis and y-axis limits
@@ -1065,7 +1072,7 @@ def generate_HTML_report(params, score0=0):
         f.write('#\n')
         f.write('#sample_name\tchr\tpos\ttype\tscore\tref\tmut\tcov\tmut_freq\tcleanliness\tploidy\n')
 
-    print(score_lim_dict)
+    # print(score_lim_dict)
     filter_cmd = 'cat ' + IsoMut2_results_dir + 'all_SNVs.isomut2 | awk \'BEGIN{FS=\"\t\"; OFS=\"\t\";}{'
     for i in range(len(unique_ploidies)):
         filter_cmd += 'if ($11 == ' + str(unique_ploidies[i]) + ' && $5 > ' + str(score_lim_dict['SNV'][i]) + ') print $0; '
