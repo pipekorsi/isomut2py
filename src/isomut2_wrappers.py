@@ -84,7 +84,7 @@ def temp_file_from_block(chrom,from_pos,to_pos,
                          bedfile,
                          samtools_flags):
     """
-    Run the samtools + the raw_est_hapcov C application in the system shell.
+    Run the samtools + the PEprep C application in the system shell.
 
     Creating temporary files for ploidy estimating by filtering positions
     based on their reference nucleotide frequency.
@@ -106,7 +106,7 @@ def temp_file_from_block(chrom,from_pos,to_pos,
     if(bedfile!=None):
         cmd+=' -l '+bedfile+' '
     cmd+=input_dir+'/'+bam_file +' '
-    cmd+=' 2>> '+output_dir+'/samtools.log | raw_est_hapcov '
+    cmd+=' 2>> '+output_dir+'/samtools.log | PEprep '
     cmd+=' '.join(map(str,[windowsize,shiftsize,min_noise,
                            base_quality_limit, cov_est_filename,bam_file])) +' '
     cmd+=' > ' +output_dir+'/PEtmp_blockfile_'+ chrom+'_'+str(from_pos)+'_'+str(to_pos)+'.csv'
@@ -1333,36 +1333,50 @@ def run_isomut2(params):
     #             if cleanliness_dict.has_key(key):
     #                 new_fh.write('\t'.join(line_list[:9]+[cleanliness_dict[key]])+'\n')
 
-    for new_file_name in glob.glob(params['output_dir']+'/tmp_isomut2_*_mut.csv'):
-        with open(new_file_name) as f_new:
-            # let's collect original cleanliness into a dict first
-            cleanliness_dict=dict()
-            old_file_name = params['output_dir'] + '/' + new_file_name.split('.')[-2].split('/')[-1] + '_orig.csv'
-            with open(old_file_name) as f_old:
-                f_old.readline() #skip header
-                for line in f_old:
-                    line_list=line.strip().split('\t')
-                    if (len(line_list) == 11):
-                        key='_'.join(line_list[1:4]+line_list[5:7])
-                        cleanliness_dict[key]=[line_list[9], line_list[0]]
-            # now it's okay to remove the old file
-            subprocess.check_call('rm ' + old_file_name, shell=True)
-            # now we move on to the new files
-            f_new.readline() #skip header
-            final_file_name = params['output_dir'] + '/' + new_file_name.split('.')[-2].split('/')[-1] + '_final.csv'
-            with open(final_file_name,'w') as f_final:
-                f_final.write(header)
-                for line in f_new:
-                    line_list=line.strip().split('\t')
-                    key='_'.join(line_list[1:4]+line_list[5:7])
-                    if key in cleanliness_dict:
-                        f_final.write('\t'.join([cleanliness_dict[key][1]]+line_list[1:9]+[cleanliness_dict[key][0]]+[line_list[10]])+'\n')
+    number_of_files = subprocess.check_output('ls '+params['output_dir']+'/tmp_isomut2_*_mut.csv | wc -l', shell=True)
+    number_of_files = int(number_of_files.strip())
 
-    # now we collect SNVs
-    subprocess.check_call(
-        'tail -q -n+2 '+params['output_dir']+'/tmp_isomut2_*_mut_final.csv | \
-        awk \'$4=="SNV" {print}\' | \
-        sort -n -k2,2 -k3,3 >> '+params['output_dir']+'/all_SNVs.isomut2',shell=True)
+    number_of_lines = subprocess.check_output('cat '+params['output_dir']+'/tmp_isomut2_*_mut.csv | wc -l', shell=True)
+    number_of_lines = int(number_of_lines.strip())
+
+    if (number_of_files == number_of_lines):
+        print('\tWARNING: Second round did not result in any mutations, using original results. (It is advised you take a closer look at the BAM files.)')
+        subprocess.check_call(
+            'tail -q -n+2 '+params['output_dir']+'/tmp_isomut2_*_mut_orig.csv | \
+            awk \'$4=="SNV" {print}\' | \
+            sort -n -k2,2 -k3,3 >> '+params['output_dir']+'/all_SNVs.isomut2',shell=True)
+
+    else:
+        for new_file_name in glob.glob(params['output_dir']+'/tmp_isomut2_*_mut.csv'):
+            with open(new_file_name) as f_new:
+                # let's collect original cleanliness into a dict first
+                cleanliness_dict=dict()
+                old_file_name = params['output_dir'] + '/' + new_file_name.split('.')[-2].split('/')[-1] + '_orig.csv'
+                with open(old_file_name) as f_old:
+                    f_old.readline() #skip header
+                    for line in f_old:
+                        line_list=line.strip().split('\t')
+                        if (len(line_list) == 11):
+                            key='_'.join(line_list[1:4]+line_list[5:7])
+                            cleanliness_dict[key]=[line_list[9], line_list[0]]
+                # now it's okay to remove the old file
+                subprocess.check_call('rm ' + old_file_name, shell=True)
+                # now we move on to the new files
+                f_new.readline() #skip header
+                final_file_name = params['output_dir'] + '/' + new_file_name.split('.')[-2].split('/')[-1] + '_final.csv'
+                with open(final_file_name,'w') as f_final:
+                    f_final.write(header)
+                    for line in f_new:
+                        line_list=line.strip().split('\t')
+                        key='_'.join(line_list[1:4]+line_list[5:7])
+                        if key in cleanliness_dict:
+                            f_final.write('\t'.join([cleanliness_dict[key][1]]+line_list[1:9]+[cleanliness_dict[key][0]]+[line_list[10]])+'\n')
+
+        # now we collect SNVs
+        subprocess.check_call(
+            'tail -q -n+2 '+params['output_dir']+'/tmp_isomut2_*_mut_final.csv | \
+            awk \'$4=="SNV" {print}\' | \
+            sort -n -k2,2 -k3,3 >> '+params['output_dir']+'/all_SNVs.isomut2',shell=True)
 
     ##########################################
     #clean up
@@ -1373,6 +1387,7 @@ def run_isomut2(params):
     # and now we can also remove the new files and the final files too
     subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut.csv',shell=True)
     subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut_final.csv',shell=True)
+    subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut_orig.csv',shell=True)
     # subprocess.check_call('rm '+params['output_dir']+'/tmp_all_SNVs.isomut',shell=True)
 
     #HTML report
