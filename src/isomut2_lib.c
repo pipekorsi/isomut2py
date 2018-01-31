@@ -937,7 +937,8 @@ int get_max_non_ref_freq(struct mplp* my_mplp,double* val, int* idx, char* mut_b
         //////////////////////////////////////////
         // printf("noisiest ID not found, there are no clean samples\n");
         //////////////////////////////////////////
-        return 0;
+        // return 0; //this is the original version, but it's probably best if we just skip these
+        return 1;
       }
       //no noisiest sample was found but there ARE clean samples (this should not happen) > skip position
       else if (*noisiest_idx == -42 && number_of_cleans != 0)
@@ -1383,8 +1384,9 @@ int check_if_indel_noisy(struct mplp* my_mplp, double sample_mut_freq_limit, dou
     //if could not find the noisiest one and there are no clean samples at all, then all samples are mutated > special treatment
     if (*noisiest_cov <= 0 && number_of_cleans == 0)
     {
+      return 1;
       *noisiest_cov = -999;
-      return 0;
+      // return 0; this is the original version
     }
     //if could not find the noisiest, but there ARE clean ones, skip the position
     else if (*noisiest_cov <= 0 && number_of_cleans != 0)
