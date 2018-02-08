@@ -367,7 +367,7 @@ def PE_prepare_temp_files(PEParams, level=0):
     if ('samtools_flags' not in PEParams):
         PEParams['samtools_flags']=' -B -d '+ str(SAMTOOLS_MAX_DEPTH) + ' '
     if ('chromosomes' not in PEParams):
-        PEParams['chromosomes']=None
+        PEParams['chromosomes']=[str(i) for i in range(1,23)]+['X', 'Y']
 
     #define blocks and create args
     blocks=define_parallel_blocks(PEParams['ref_fasta'],PEParams['n_min_block'],PEParams['chromosomes'], params=None, level=level+1)
@@ -640,6 +640,8 @@ def ploidy_estimation(PEParams, level=0):
     starting_time = datetime.now()
     print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Ploidy estimation for file ' + PEParams['bam_filename'])
     print('\n')
+
+
 
     PE_prepare_temp_files(PEParams, level=level+1)
 
