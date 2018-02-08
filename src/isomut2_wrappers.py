@@ -1,5 +1,6 @@
 from __future__ import print_function
 from __future__ import division
+
 import multiprocessing
 import sys
 import time
@@ -9,15 +10,24 @@ import os
 import glob
 import pandas as pd
 import numpy as np
+
 import matplotlib
 # Force matplotlib to not use any Xwindows backend.
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+
 from io import BytesIO
 import base64
+
 import seaborn as sns
 sns.set(color_codes=True)
 sns.set_style("whitegrid")
+
+import pymc3 as pm
+import theano.tensor as tt
+import scipy as sp
+import scipy.stats as stats
+from scipy.stats import exponnorm
 
 
 # command line parameter "-d" for samtools
@@ -113,104 +123,15 @@ def temp_file_from_block(chrom,from_pos,to_pos,
 
     return subprocess.check_call(cmd,shell=True)
 
-def PE_on_range(dataframe, rmin, rmax, haploid_cov, snp_density):
 
-    """
-    Run ploidy estimation on a given range of a chromosome.
+def PE_on_chrom(PEParams, chrom, prior_dict):
 
-    """
-
-    temp = dataframe[(dataframe['pos']>= rmin) & (dataframe['pos']<= rmax)
-                     & (dataframe['cov']>=5) & (dataframe['cov']<=200)]
-    if (temp.shape[0] == 0 or temp['pos'].max() == temp['pos'].min()):
-        return 0, 0
-
-    mf_list = np.array(temp['mut_freq'])
-    if (float(temp[(temp['mut_freq'] > 0.45) & (temp['mut_freq'] < 0.55)].shape[0])/temp.shape[0] < 0.2): # if values are not centralised around 0.5, transform to [0,0.5]
-        mf_list = 1-mf_list*(mf_list>0.5)+(mf_list-1)*(mf_list<=0.5)
-    mc = temp['cov'].mean()
-    d_c = temp['cov'].std()
-    # mrnf = 0.5-np.abs(0.5-temp['mut_freq'].mean())
-    mrnf = np.mean(mf_list)
-    d_rnf = np.std(mf_list)
-    p_c = mc/haploid_cov
-    p_rnf = float(1)/mrnf
-    d_prnf = d_rnf/(mrnf)**2
-    d_pc = d_c/haploid_cov
-    error_pc = d_pc/p_c
-    error_prnf = d_prnf/p_rnf
-    if (error_pc+error_prnf != 0 and not np.isnan(error_pc) and not np.isnan(error_prnf)):
-        error_pc_corr = error_pc/(error_pc+error_pc+error_prnf)
-        error_prnf_corr = error_prnf/(error_pc+error_pc+error_prnf)
-        if (error_prnf != 0 and error_pc != 0):
-            s = error_prnf/error_pc
-            x = 1/(2+1/s)
-        else:
-            s = 1
-            x = 1/3
-    else:
-        error_pc_corr = 0
-        error_prnf_corr = 0
-        s = 1
-        x = 1/3
-    ##### LOH regions are not detected for ploidies higher than 4
-
-    # what to do when rnf suggests p = 1:
-    if (round(p_rnf) == 1 and (np.abs(2-p_c) < np.abs(1-p_c))):
-        return 2, 1 # diploid, but LOH
-    elif (round(p_rnf) == 1 and (np.abs(2-p_c) > np.abs(1-p_c))):
-        return 1, 0 # haploid, no LOH
-    # what to do when rnf suggests p = 2:
-    elif (round(p_rnf) == 2 and (np.abs(4-p_c) < np.abs(2-p_c))):
-        return 4, 1 # tetraploid with two identical alleles (LOH)
-    elif (round(p_rnf) == 2 and (np.abs(4-p_c) > np.abs(2-p_c))):
-        p = 2
-        loh = 0
-        # if (float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< snp_density):
-        #     loh = 1
-        return p, loh
-    # what to do when rnf and cov suggest very different p values:
-    elif (np.abs(mc/haploid_cov-1/mrnf) >= 2.5):
-        # p = np.min([int(round(p_c)), int(round(p_rnf))]) # use the smaller one
-        p = int(round(p_c)) # or use the one suggested by coverage (this should be the most reliable if the mapping is correct, if not, rnf is worhtless as well)
-        loh = 0
-        # if (p > 1 and p < 5 and float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< 0.0015 and float(temp[temp['mut_freq']>0.5].shape[0])/temp[temp['mut_freq']<0.5].shape[0] < 0.3):
-        if (p > 1 and p < 5 and float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< snp_density):
-            loh = 1
-        return p, loh # something strange, LOH questionable
-    # what to do in general
-    else:
-        # if (round(p_c*(1-error_pc_corr)+p_rnf*(1-error_prnf_corr)) == round(p_c*(1-error_pc_corr)+p_rnf*(1-error_prnf_corr))):
-        if (not np.isnan(p_c) and not np.isnan(p_rnf)):
-            # what if the relative error of any of them is larger than 1? (very unreliable)
-            if (error_pc > 1 and error_prnf < 1): # if rnf is more reliable, let that win - but should we?
-                p = int(round(p_rnf))
-            elif (error_pc < 1 and error_prnf > 1): # if rnf is unreliable, use coverage
-                p = int(round(p_c))
-            else: # both of them are reliable, calculate accurately
-                p = int(round(p_c*(1-error_pc_corr)+p_rnf*(1-error_prnf_corr)))
-                # p = int(round(p_c*x*2+p_rnf*x/s))
-            loh = 0
-            # if (p > 1 and p < 5 and float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< 0.0015 and float(temp[temp['mut_freq']>0.5].shape[0])/temp[temp['mut_freq']<0.5].shape[0] < 0.3):
-            if (p > 1 and p < 5 and float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< snp_density and round(p_c) != round(p_rnf)):
-                loh = 1
-            return p, loh
-        else:
-            return 0, 0
-
-
-def PE_on_chrom(chrom,
-                output_dir,
-                windowsize_PE,
-                shiftsize_PE,
-                haploid_cov,
-                snp_density):
     """
     Run ploidy estimation on a given chromosome.
 
     """
+    df = pd.read_csv(PEParams['output_dir']+'/' + 'PEtmp_fullchrom_' + chrom + '.txt', sep='\t', names=['chrom', 'pos', 'cov', 'mut_freq']).sort_values(by='pos')
 
-    df = pd.read_csv(output_dir + '/PEtmp_fullchrom_' + chrom + '.txt', sep='\t', names=['chrom', 'pos', 'cov', 'mut_freq']).sort_values(by='pos')
     df['chrom'] = df['chrom'].apply(str)
     pos_all = np.array(list(df['pos']))
     total_ploidy_a = np.array([0]*len(pos_all))
@@ -219,12 +140,12 @@ def PE_on_chrom(chrom,
     posstart = df['pos'].min()
     posmax = df['pos'].max()
     while (posstart < posmax):
-        p, loh = PE_on_range(df, posstart, posstart+windowsize_PE, haploid_cov, snp_density)
+        p, loh = PE_on_range(df, posstart, posstart+PEParams['windowsize_PE'], prior_dict['mu'], prior_dict['sigma'], prior_dict['p'], PEParams)
         if (p > 0):
-            total_ploidy_a += p*(pos_all>=posstart)*(pos_all<=posstart+windowsize_PE)
-            total_loh_a += loh*(pos_all>=posstart)*(pos_all<=posstart+windowsize_PE)
-            est_num_a += 1*(pos_all>=posstart)*(pos_all<=posstart+windowsize_PE)
-        posstart += shiftsize_PE
+            total_ploidy_a += p*(pos_all>=posstart)*(pos_all<=posstart+PEParams['windowsize_PE'])
+            total_loh_a += loh*(pos_all>=posstart)*(pos_all<=posstart+PEParams['windowsize_PE'])
+            est_num_a += 1*(pos_all>=posstart)*(pos_all<=posstart+PEParams['windowsize_PE'])
+        posstart += PEParams['shiftsize_PE']
     df['total_ploidy'] = total_ploidy_a
     df['total_loh'] = total_loh_a
     df['est_num'] = est_num_a
@@ -236,17 +157,209 @@ def PE_on_chrom(chrom,
     df['ploidy'] = df['ploidy'].astype(int)
     df['LOH'] = df['LOH'].astype(int)
 
-    df[['chrom', 'pos', 'cov', 'mut_freq', 'ploidy', 'LOH']].to_csv(output_dir + '/PE_fullchrom_' + chrom + '.txt', sep='\t', index=False)
+    df[['chrom', 'pos', 'cov', 'mut_freq', 'ploidy', 'LOH']].to_csv(PEParams['output_dir'] + '/PE_fullchrom_' + chrom + '.txt', sep='\t', index=False)
+    # return df[['chrom', 'pos', 'cov', 'mut_freq', 'ploidy', 'LOH', 'total_ploidy', 'est_num']]
+
+def PE_on_range(dataframe, rmin, rmax, all_mu, all_sigma, prior, PEParams):
+
+    def px0(mean_diff):
+        k = -1*np.log(0.5)/1000
+        return np.exp(-1*k*mean_diff)
+
+    temp = dataframe[(dataframe['pos']>= rmin) & (dataframe['pos']<= rmax)
+                     & (dataframe['cov']>=PEParams['cov_min']) & (dataframe['cov']<=PEParams['cov_max'])]
+
+    if (temp.shape[0] == 0 or temp['pos'].max() == temp['pos'].min()):
+        return 0, 0
+
+    #get cov mean
+    cov_mean = temp['cov'].mean()
+
+    posteriors = []
+    for ploidy in range(len(mu)):
+        likelihood = stats.norm.pdf(cov_mean, loc=all_mu[ploidy], scale=all_sigma[ploidy])
+        posteriors.append(likelihood*prior[ploidy])
+    posteriors = np.array(posteriors)
+    most_probable_ploidy = np.argmax(posteriors) + 1
+
+
+    new_mean_dip = 0.5428682460756673
+
+    mf_list = np.array(temp[temp['mut_freq'] >= 0.5]['mut_freq'])
+    mf_mean = np.mean(mf_list)
+    max_num_of_minority_alleles = int(np.floor(most_probable_ploidy/2))
+
+    # get average difference between measurement points
+
+    pos_all = np.array(temp.sort_values(by=['pos'])['pos'])
+    pos_diff = np.diff(pos_all)
+    prob_of_no_minority_allele = 1-px0(pos_diff.mean())
+    prob_of_other_minority_allele = (1-prob_of_no_minority_allele)/max_num_of_minority_alleles
+
+    minority_alleles_prior = [prob_of_no_minority_allele]+[prob_of_other_minority_allele]*max_num_of_minority_alleles
+    minority_alleles_posterior = []
+    number_of_unsure_bases = 2
+
+    likelihoods_all = []
+    for minority_alleles in range(max_num_of_minority_alleles+1):
+        if (minority_alleles == 0):
+            likelihood_ma = 1
+        elif (most_probable_ploidy%2 == 0 and minority_alleles == most_probable_ploidy/2):
+            likelihood_ma = stats.norm.pdf(mf_mean,
+                                        loc=new_mean_dip,
+                                        scale=(number_of_unsure_bases/all_mu[most_probable_ploidy-1])*(2/3))/I[0]
+        else:
+            likelihood_ma = stats.norm.pdf(mf_mean,
+                                        loc=1-(minority_alleles/most_probable_ploidy),
+                                        scale=(number_of_unsure_bases/all_mu[most_probable_ploidy-1])*(2/3))
+        likelihoods_all.append(likelihood_ma)
+        minority_alleles_posterior.append(likelihood_ma*minority_alleles_prior[minority_alleles])
+    minority_alleles_posterior = np.array(minority_alleles_posterior)
+
+    most_probable_ma_num = np.argmax(minority_alleles_posterior)
+    if (most_probable_ma_num != 1 and most_probable_ploidy > 1):
+        most_probable_loh = 1
+    else:
+        most_probable_loh = 0
+
+    return most_probable_ploidy, most_probable_loh
+
+# def PE_on_range(dataframe, rmin, rmax, haploid_cov, snp_density):
+#
+#     """
+#     Run ploidy estimation on a given range of a chromosome.
+#
+#     """
+#
+#     temp = dataframe[(dataframe['pos']>= rmin) & (dataframe['pos']<= rmax)
+#                      & (dataframe['cov']>=5) & (dataframe['cov']<=200)]
+#     if (temp.shape[0] == 0 or temp['pos'].max() == temp['pos'].min()):
+#         return 0, 0
+#
+#     mf_list = np.array(temp['mut_freq'])
+#     if (float(temp[(temp['mut_freq'] > 0.45) & (temp['mut_freq'] < 0.55)].shape[0])/temp.shape[0] < 0.2): # if values are not centralised around 0.5, transform to [0,0.5]
+#         mf_list = 1-mf_list*(mf_list>0.5)+(mf_list-1)*(mf_list<=0.5)
+#     mc = temp['cov'].mean()
+#     d_c = temp['cov'].std()
+#     # mrnf = 0.5-np.abs(0.5-temp['mut_freq'].mean())
+#     mrnf = np.mean(mf_list)
+#     d_rnf = np.std(mf_list)
+#     p_c = mc/haploid_cov
+#     p_rnf = float(1)/mrnf
+#     d_prnf = d_rnf/(mrnf)**2
+#     d_pc = d_c/haploid_cov
+#     error_pc = d_pc/p_c
+#     error_prnf = d_prnf/p_rnf
+#     if (error_pc+error_prnf != 0 and not np.isnan(error_pc) and not np.isnan(error_prnf)):
+#         error_pc_corr = error_pc/(error_pc+error_pc+error_prnf)
+#         error_prnf_corr = error_prnf/(error_pc+error_pc+error_prnf)
+#         if (error_prnf != 0 and error_pc != 0):
+#             s = error_prnf/error_pc
+#             x = 1/(2+1/s)
+#         else:
+#             s = 1
+#             x = 1/3
+#     else:
+#         error_pc_corr = 0
+#         error_prnf_corr = 0
+#         s = 1
+#         x = 1/3
+#     ##### LOH regions are not detected for ploidies higher than 4
+#
+#     # what to do when rnf suggests p = 1:
+#     if (round(p_rnf) == 1 and (np.abs(2-p_c) < np.abs(1-p_c))):
+#         return 2, 1 # diploid, but LOH
+#     elif (round(p_rnf) == 1 and (np.abs(2-p_c) > np.abs(1-p_c))):
+#         return 1, 0 # haploid, no LOH
+#     # what to do when rnf suggests p = 2:
+#     elif (round(p_rnf) == 2 and (np.abs(4-p_c) < np.abs(2-p_c))):
+#         return 4, 1 # tetraploid with two identical alleles (LOH)
+#     elif (round(p_rnf) == 2 and (np.abs(4-p_c) > np.abs(2-p_c))):
+#         p = 2
+#         loh = 0
+#         # if (float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< snp_density):
+#         #     loh = 1
+#         return p, loh
+#     # what to do when rnf and cov suggest very different p values:
+#     elif (np.abs(mc/haploid_cov-1/mrnf) >= 2.5):
+#         # p = np.min([int(round(p_c)), int(round(p_rnf))]) # use the smaller one
+#         p = int(round(p_c)) # or use the one suggested by coverage (this should be the most reliable if the mapping is correct, if not, rnf is worhtless as well)
+#         loh = 0
+#         # if (p > 1 and p < 5 and float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< 0.0015 and float(temp[temp['mut_freq']>0.5].shape[0])/temp[temp['mut_freq']<0.5].shape[0] < 0.3):
+#         if (p > 1 and p < 5 and float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< snp_density):
+#             loh = 1
+#         return p, loh # something strange, LOH questionable
+#     # what to do in general
+#     else:
+#         # if (round(p_c*(1-error_pc_corr)+p_rnf*(1-error_prnf_corr)) == round(p_c*(1-error_pc_corr)+p_rnf*(1-error_prnf_corr))):
+#         if (not np.isnan(p_c) and not np.isnan(p_rnf)):
+#             # what if the relative error of any of them is larger than 1? (very unreliable)
+#             if (error_pc > 1 and error_prnf < 1): # if rnf is more reliable, let that win - but should we?
+#                 p = int(round(p_rnf))
+#             elif (error_pc < 1 and error_prnf > 1): # if rnf is unreliable, use coverage
+#                 p = int(round(p_c))
+#             else: # both of them are reliable, calculate accurately
+#                 p = int(round(p_c*(1-error_pc_corr)+p_rnf*(1-error_prnf_corr)))
+#                 # p = int(round(p_c*x*2+p_rnf*x/s))
+#             loh = 0
+#             # if (p > 1 and p < 5 and float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< 0.0015 and float(temp[temp['mut_freq']>0.5].shape[0])/temp[temp['mut_freq']<0.5].shape[0] < 0.3):
+#             if (p > 1 and p < 5 and float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< snp_density and round(p_c) != round(p_rnf)):
+#                 loh = 1
+#             return p, loh
+#         else:
+#             return 0, 0
+
+
+# def PE_on_chrom(chrom,
+#                 output_dir,
+#                 windowsize_PE,
+#                 shiftsize_PE,
+#                 haploid_cov,
+#                 snp_density):
+#     """
+#     Run ploidy estimation on a given chromosome.
+#
+#     """
+#
+#     df = pd.read_csv(output_dir + '/PEtmp_fullchrom_' + chrom + '.txt', sep='\t', names=['chrom', 'pos', 'cov', 'mut_freq']).sort_values(by='pos')
+#     df['chrom'] = df['chrom'].apply(str)
+#     pos_all = np.array(list(df['pos']))
+#     total_ploidy_a = np.array([0]*len(pos_all))
+#     total_loh_a = np.array([0]*len(pos_all))
+#     est_num_a = np.array([0]*len(pos_all))
+#     posstart = df['pos'].min()
+#     posmax = df['pos'].max()
+#     while (posstart < posmax):
+#         p, loh = PE_on_range(df, posstart, posstart+windowsize_PE, haploid_cov, snp_density)
+#         if (p > 0):
+#             total_ploidy_a += p*(pos_all>=posstart)*(pos_all<=posstart+windowsize_PE)
+#             total_loh_a += loh*(pos_all>=posstart)*(pos_all<=posstart+windowsize_PE)
+#             est_num_a += 1*(pos_all>=posstart)*(pos_all<=posstart+windowsize_PE)
+#         posstart += shiftsize_PE
+#     df['total_ploidy'] = total_ploidy_a
+#     df['total_loh'] = total_loh_a
+#     df['est_num'] = est_num_a
+#
+#     df['ploidy'] = (df['total_ploidy']/df['est_num']).round()
+#     df['LOH'] = (df['total_loh']/df['est_num']).round()
+#
+#     df = df[(~df['ploidy'].isnull()) & (~df['LOH'].isnull())]
+#     df['ploidy'] = df['ploidy'].astype(int)
+#     df['LOH'] = df['LOH'].astype(int)
+#
+#     df[['chrom', 'pos', 'cov', 'mut_freq', 'ploidy', 'LOH']].to_csv(output_dir + '/PE_fullchrom_' + chrom + '.txt', sep='\t', index=False)
 
     # remove old file
     # return subprocess.check_call('rm ' + output_dir + '/PEtmp_fullchrom_' + chrom + '.txt',shell=True)
 
 
-def prepare_temp_files(PEParams, level=0):
+def PE_prepare_temp_files(PEParams, level=0):
 
-    """ Prepare temporary files for ploidy estimation, while calculating the raw estimate of the average haploid coverage."""
+    """ Prepare temporary files for ploidy estimation, by averaging coverage in moving windows for the whole genome and collecting
+    positions with reference allele frequencies in the [min_noise, 1-min_noise] range."""
 
-    print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Preparing temporary files...')
+    starting_time = datetime.now()
+    print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Ploidy estimation on sample')
 
     #check for bedfile argument:
     if ('bedfile' not in PEParams):
@@ -268,12 +381,12 @@ def prepare_temp_files(PEParams, level=0):
                      PEParams['bedfile'],PEParams['samtools_flags']])
 
     #create dir
-    print('\t'*level + ' (All output files will be written to ' + PEParams['output_dir'] + ')\n')
+    print('\t'*level +  time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - (All output files will be written to ' + PEParams['output_dir'] + ')\n')
     if(glob.glob(PEParams['output_dir'])==[]):
         subprocess.call(['mkdir',PEParams['output_dir']])
 
     print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Generating temporary files, number of blocks to run: '+ str(len(args)))
-    print('\t'*level + 'Currently running: ', end=' ')
+    print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) +  ' - Currently running: ', end=' ')
     #start first n concurrent block
     procs=[]
     for i in range(PEParams['n_conc_blocks']):
@@ -303,7 +416,7 @@ def prepare_temp_files(PEParams, level=0):
         time.sleep(0.1)
 
     print('\n')
-    print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Temporary files created, merging, cleaning up, estimating haploid coverage...\n')
+    print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Temporary files created, merging, cleaning up...\n')
 
     # collecting temp position files to single files for each chromosome
     for c in PEParams['chromosomes']:
@@ -312,15 +425,31 @@ def prepare_temp_files(PEParams, level=0):
         cmd = 'rm ' + PEParams['output_dir'] + '/PEtmp_blockfile_' + c + '_*'
         subprocess.check_call(cmd,shell=True)
 
+    # print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Estimating haploid coverage by fitting an infinite mixture model to the coverage distribution...\n')
+    # raw_hc = estimate_hapcov_infmix()
+    # print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Raw estimate for the haploid coverage: ' + str(raw_hc) + '\n')
+    # print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Fitting equidistant Gaussians to the coverage distribution using the raw estimate as prior...\n')
+    # distribution_dict = fit_gaussians()
+    # print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Estimating local ploidy using the previously determined Gaussians as priors...\n')
+    # ploidy_estimation_on_genome()
+    #
+    # finish_time = datetime.now()
+    # total_time = finish_time-starting_time
+    # total_time_h = int(total_time.seconds/3600)
+    # total_time_m = int((total_time.seconds%3600)/60)
+    # total_time_s = (total_time.seconds%3600)%60
+    # print('\n'+'\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Ploidy estimation finished. (' + str(total_time.days) + ' day(s), ' + str(total_time_h) + ' hour(s), ' + str(total_time_m) + ' min(s), ' + str(total_time_s) + ' sec(s).)')
+
+
     # estimating haploid coverage
-    cmd = 'cat ' + PEParams['output_dir'] + '/*_tmp_HCE.txt > ' + PEParams['output_dir'] + '/raw_est_hapcov_file.txt'
-    subprocess.check_call(cmd,shell=True)
-    cmd = 'rm ' + PEParams['output_dir'] + '/*_tmp_HCE.txt'
-    subprocess.check_call(cmd,shell=True)
-    df = pd.read_csv(PEParams['output_dir'] + '/raw_est_hapcov_file.txt', sep='\t', names=['dip_cov_total', 'dip_count', 'trip_cov_total', 'trip_count'])
-    avg_dip_cov = float(df['dip_cov_total'].sum())/df['dip_count'].sum()
-    avg_trip_cov = float(df['trip_cov_total'].sum())/df['trip_count'].sum()
-    AVG_HAP_COV = avg_dip_cov/2
+    # cmd = 'cat ' + PEParams['output_dir'] + '/*_tmp_HCE.txt > ' + PEParams['output_dir'] + '/raw_est_hapcov_file.txt'
+    # subprocess.check_call(cmd,shell=True)
+    # cmd = 'rm ' + PEParams['output_dir'] + '/*_tmp_HCE.txt'
+    # subprocess.check_call(cmd,shell=True)
+    # df = pd.read_csv(PEParams['output_dir'] + '/raw_est_hapcov_file.txt', sep='\t', names=['dip_cov_total', 'dip_count', 'trip_cov_total', 'trip_count'])
+    # avg_dip_cov = float(df['dip_cov_total'].sum())/df['dip_count'].sum()
+    # avg_trip_cov = float(df['trip_cov_total'].sum())/df['trip_count'].sum()
+    # AVG_HAP_COV = avg_dip_cov/2
     # if (avg_trip_cov < avg_dip_cov): # "diploid" regions probably tetraploid
     #     AVG_HAP_COV = avg_trip_cov/3
     # elif ((avg_trip_cov-avg_dip_cov)/avg_dip_cov < 0.3): # "triploid" regions probably diploid ones with skewed mut_freqs
@@ -328,12 +457,12 @@ def prepare_temp_files(PEParams, level=0):
     # else:
     #     AVG_HAP_COV = np.mean([avg_dip_cov/2, avg_trip_cov/3])
 
-    if ('avg_hap_cov' not in PEParams):
-        print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Raw estimate of haploid coverage: ' + str(AVG_HAP_COV))
-        return AVG_HAP_COV
-    else:
-        print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - User-defined haploid coverage: ' + str(PEParams['avg_hap_cov']))
-        return PEParams['avg_hap_cov']
+    # if ('avg_hap_cov' not in PEParams):
+    #     print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Raw estimate of haploid coverage: ' + str(AVG_HAP_COV))
+    #     return AVG_HAP_COV
+    # else:
+    #     print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - User-defined haploid coverage: ' + str(PEParams['avg_hap_cov']))
+    #     return PEParams['avg_hap_cov']
 
 def get_ploidy_ranges_for_chrom(outputdir, chrom, chr_list, before_list, after_list, pl_list, loh_list, chrom_len_dict):
     """
@@ -388,56 +517,189 @@ def get_bed_format_for_sample(PEParams):
     df['LOH'] = loh_list
     df.to_csv(PEParams['output_dir']+'/'+PEParams['bam_filename'].split('.bam')[0]+'_ploidy.bed', index=False)
 
+def estimate_hapcov_infmix(PEParams, level=0):
+
+    # coverage distribution from temporary files (the number of points is decreased for faster inference)
+    covs = np.array([])
+    for c in PEParams['chromosomes']:
+        df = pd.read_csv(PEParams['output_dir']+'/' + 'PEtmp_fullchrom_' + c + '.txt', sep='\t', names=['chrom', 'pos', 'cov', 'rnf'])
+        covs = np.append(covs, np.array(list(df['cov'])))
+    covs = covs[(covs<PEParams['max_cov'])*(covs>PEParams['min_cov'])]
+    covs_few = np.random.choice(covs, 2000)
+
+    K = 20
+    number_of_chains = 10
+    iterations = 20000
+    burn_beginning = 15000
+
+    def stick_breaking(beta):
+        portion_remaining = tt.concatenate([[1], tt.extra_ops.cumprod(1 - beta)[:-1]])
+        return beta * portion_remaining
+
+    def fit_infinite_mixture_model(coverage_dist, K, number_of_chains_to_use, number_of_iterations, burn_period):
+        covdist_standard = (coverage_dist - coverage_dist.mean()) / coverage_dist.std()
+        N = len(covdist_standard)
+        with pm.Model() as model:
+            alpha = pm.Gamma('alpha', 1., 1.)
+            beta = pm.Beta('beta', 1., alpha, shape=K)
+            w = pm.Deterministic('w', stick_breaking(beta))
+
+            tau = pm.Gamma('tau', 1., 1., shape=K)
+            lambda_ = pm.Uniform('lambda', 0, 5, shape=K)
+            mu = pm.ExGaussian('mu', mu=-4, sigma=np.sqrt(1/(lambda_ * tau)), nu=5, shape=K)
+            obs = pm.NormalMixture('obs', w, mu, tau=lambda_ * tau,
+                                   observed=covdist_standard)
+        with model:
+            step1 = pm.Metropolis(vars=[alpha, beta, tau, lambda_, mu])
+            tr = pm.sample(number_of_iterations, step=[step1], njobs=number_of_chains_to_use, progressbar=False)
+
+        trace = tr[burn_period:]
+        return trace
+
+    trace = fit_infinite_mixture_model(coverage_dist=covs_few,
+                                  K = K,
+                                  number_of_chains_to_use = number_of_chains,
+                                  number_of_iterations = iterations,
+                                  burn_period = burn_beginning)
+    chains_to_use = [c for c in range(number_of_chains)]
+    hc_all_ests  = []
+    for c in chains_to_use:
+        comp_weights = trace.get_values('w', chains=[c]).mean(axis=0)
+        comp_weights_sortidx = np.argsort(comp_weights)
+        standard_means = trace.get_values('mu', chains=[c]).mean(axis=0)[comp_weights_sortidx]
+        true_means = standard_means * covdist.std() + covdist.mean()
+        hc_maxweight = true_means[0]/(np.round(true_means[0]/true_means[true_means>PEParams['cov_min']].min()))
+        hc_all_ests.append(hc_maxweight)
+    hc_all_ests = np.array(hc_all_ests)
+    hc_maxweight = np.percentile(a=hc_all_ests[np.isfinite(hc_all_ests)], q=PEParams['hc_percentile'])
+    return hc_maxweight, covs_few
+
+def fit_gaussians(PEParams, estimated_hapcov, coverage_distribution, level=0):
+
+    def get_samples(coverage_distribution, estimated_haploid_cov, number_of_iterations, burn_period):
+        K = 7
+        halfwidth_of_uniform = 0.2
+        model = pm.Model()
+        with model:
+            p = pm.Dirichlet('p', a=np.array([1., 1., 1., 1., 1., 1., 1.]), shape=K)
+            c1 = pm.Uniform('c1', (1-halfwidth_of_uniform)*estimated_haploid_cov, (1+halfwidth_of_uniform)*estimated_haploid_cov)
+            means = tt.stack([c1, c1*2, c1*3, c1*4, c1*5, c1*6, c1*7])
+            order_means_potential = pm.Potential('order_means_potential',
+                                                 tt.switch(means[1]-means[0] < 0, -np.inf, 0)
+                                                 + tt.switch(means[2]-means[1] < 0, -np.inf, 0))
+            sds = pm.Uniform('sds', lower=0, upper=estimated_haploid_cov/2, shape=K)
+            category = pm.Categorical('category',
+                                      p=p,
+                                      shape=len(coverage_distribution))
+            points = pm.Normal('obs',
+                               mu=means[category],
+                               sd=sds[category],
+                               observed=coverage_distribution)
+        with model:
+            step1 = pm.Metropolis(vars=[p, sds, means])
+            step2 = pm.ElemwiseCategorical(vars=[category], values=[0, 1, 2, 3, 4, 5, 6])
+            tr = pm.sample(number_of_iterations, step=[step1, step2], progressbar=False)
+        trace = tr[burn_period:]
+        return trace
+
+    iterations2 = 20000
+    burn_beginning2 = 15000
+
+    trace2 = get_samples(coverage_distribution=coverage_distribution,
+                       estimated_haploid_cov = estimated_hapcov,
+                       number_of_iterations = iterations2,
+                       burn_period = burn_beginning2)
+
+    std_trace = trace2.get_values('sds', chains=[0])
+    p_trace = trace2.get_values('p', chains=[0])
+    sigma = std_trace.mean(axis=0)
+    p = p_trace.mean(axis=0)
+    mu = np.array([trace2.get_values('c1', chains=[0]).mean()*(i+1) for i in range(7)])
+
+    prior_dict = {'mu': mu, 'sigma': sigma, 'p': p}
+    return prior_dict
+
+
+
 def ploidy_estimation(PEParams, level=0):
 
     """
-        Runs ploidy estimation pipeline for the temporary files created by filtering the mpileup output.
+        Runs ploidy estimation pipeline for the input BAM file.
 
-        Ploidy estimation is run twice, first with a rough estimate of the haploid coverage,
-        then with a more refined one, deterimined from the first run.
+        In the first step, temporary files are generated by scanning the BAM file with a window and calculating average coverages. Positions where the reference
+        allele frequency is in the range [min_noise, 1-min_noise] are kept for later use to reduce data.
+        In the second step, an infinite mixture model is fitted to the coverage distribution of the remaining positions with Bayesian inference. A raw
+        estimate of the haploid coverage is determined from the model.
+        In the third step, seven equidistant Gaussians are fitted to the coverage distribution, using the previously determined raw haploid coverage as a prior for
+        the center of the first Gaussian.
+        In the forth step, the genome is scanned again with a window and local ploidies are calculated using the above Gaussians as priors and applying
+        a maximum likelihood technique.
+        In the fifth step, a final bed file and a HTML report of the results are generated.
     """
 
+    starting_time = datetime.now()
     print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Ploidy estimation for file ' + PEParams['bam_filename'])
     print('\n')
 
-    avg_hap_cov = prepare_temp_files(PEParams, level=level+1)
+    PE_prepare_temp_files(PEParams, level=level+1)
 
-    print('\n')
-    print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Preliminary ploidy estimation on chromosomes: ', end=' ')
+    print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Estimating haploid coverage by fitting an infinite mixture model to the coverage distribution...\n')
+    raw_hc, covdist = estimate_hapcov_infmix(PEParams, level=level+2)
+    print('\t'*(level+2) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Raw estimate for the haploid coverage: ' + str(raw_hc) + '\n')
+    print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Fitting equidistant Gaussians to the coverage distribution using the raw estimate as prior...\n')
+    distribution_dict = fit_gaussians(PEParams, raw_hc, covdist, level=level+2)
+    print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Estimating local ploidy using the previously determined Gaussians as priors on chromosomes: ', end=' ')
     for c in PEParams['chromosomes']:
         print(c,end=" ")
         sys.stdout.flush()
-        PE_on_chrom(chrom=c, haploid_cov=avg_hap_cov, output_dir=PEParams['output_dir'], shiftsize_PE=PEParams['shiftsize_PE'], windowsize_PE=PEParams['windowsize_PE'], snp_density = 0.0015)
+        PE_on_chrom(PEParams=PEParams, chrom=c, prior_dict=distribution_dict)
 
-    print('\n')
-    print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Re-estimating average haploid coverage, SNP density... ')
-    dipcovmean=[]
-    snp_dens = []
-    for c in PEParams['chromosomes']:
-        df = pd.read_csv(PEParams['output_dir'] + '/PE_fullchrom_' + c + '.txt', sep='\t')
-        if (df[df['ploidy']==2].shape[0] > 0):
-            dipcovmean.append(df[df['ploidy']==2]['cov'].mean())
-        snp_dens.append(float(df.shape[0])/(df['pos'].max()-df['pos'].min()))
-    snp_density_corr = np.mean(snp_dens)*0.4
-    avg_hap_cov = np.mean(dipcovmean)/2
-    print('\n')
-    print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - New estimation of average haploid coverage: ' + str(avg_hap_cov))
-    print('\n')
-    print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Estimated maximum SNP density in LOH regions: ' + str(snp_density_corr))
-
-    print('\n')
-    print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Final ploidy estimation on chromosomes: ', end=' ')
-    for c in PEParams['chromosomes']:
-        print(c, end=" ")
-        sys.stdout.flush()
-        PE_on_chrom(chrom=c, haploid_cov=avg_hap_cov, output_dir=PEParams['output_dir'], shiftsize_PE=PEParams['shiftsize_PE'], windowsize_PE=PEParams['windowsize_PE'], snp_density=snp_density_corr)
-
-    print('\n')
     print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Generating final bed file... \n')
     get_bed_format_for_sample(PEParams)
 
-    print('\n')
-    print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Done')
+    finish_time = datetime.now()
+    total_time = finish_time-starting_time
+    total_time_h = int(total_time.seconds/3600)
+    total_time_m = int((total_time.seconds%3600)/60)
+    total_time_s = (total_time.seconds%3600)%60
+    print('\n'+'\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Ploidy estimation finished. (' + str(total_time.days) + ' day(s), ' + str(total_time_h) + ' hour(s), ' + str(total_time_m) + ' min(s), ' + str(total_time_s) + ' sec(s).)')
+
+    # print('\n')
+    # print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Preliminary ploidy estimation on chromosomes: ', end=' ')
+    # for c in PEParams['chromosomes']:
+    #     print(c,end=" ")
+    #     sys.stdout.flush()
+    #     PE_on_chrom(chrom=c, haploid_cov=avg_hap_cov, output_dir=PEParams['output_dir'], shiftsize_PE=PEParams['shiftsize_PE'], windowsize_PE=PEParams['windowsize_PE'], snp_density = 0.0015)
+
+    # print('\n')
+    # print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Re-estimating average haploid coverage, SNP density... ')
+    # dipcovmean=[]
+    # snp_dens = []
+    # for c in PEParams['chromosomes']:
+    #     df = pd.read_csv(PEParams['output_dir'] + '/PE_fullchrom_' + c + '.txt', sep='\t')
+    #     if (df[df['ploidy']==2].shape[0] > 0):
+    #         dipcovmean.append(df[df['ploidy']==2]['cov'].mean())
+    #     snp_dens.append(float(df.shape[0])/(df['pos'].max()-df['pos'].min()))
+    # snp_density_corr = np.mean(snp_dens)*0.4
+    # avg_hap_cov = np.mean(dipcovmean)/2
+    # print('\n')
+    # print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - New estimation of average haploid coverage: ' + str(avg_hap_cov))
+    # print('\n')
+    # print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Estimated maximum SNP density in LOH regions: ' + str(snp_density_corr))
+    #
+    # print('\n')
+    # print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Final ploidy estimation on chromosomes: ', end=' ')
+    # for c in PEParams['chromosomes']:
+    #     print(c, end=" ")
+    #     sys.stdout.flush()
+    #     PE_on_chrom(chrom=c, haploid_cov=avg_hap_cov, output_dir=PEParams['output_dir'], shiftsize_PE=PEParams['shiftsize_PE'], windowsize_PE=PEParams['windowsize_PE'], snp_density=snp_density_corr)
+    #
+    # print('\n')
+    # print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Generating final bed file... \n')
+    # get_bed_format_for_sample(PEParams)
+    #
+    # print('\n')
+    # print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Done')
 
 # def plot_karyotype_detailed(PEParams):
 #     for c in PEParams['chromosomes']:
@@ -1268,38 +1530,10 @@ def run_isomut2(params):
         awk \'$4=="SNV" {print}\' | \
         sort -n -k2,2 -k3,3 | cut -f 2,3 > ' +params['output_dir']+'/tmp_isomut2.bed',shell=True)
 
-    #save the original filtered cleanliness for each position
-    # cleanliness_dict=dict()
-    # for init_res in glob.glob(params['output_dir']+'/tmp_isomut_*_mut.csv'):
-    #     with open(init_res) as f_h:
-    #         f_h.readline() #skip header
-    #         for line in f_h:
-    #             line_list=line.strip().split('\t')
-    #             key='_'.join(line_list[:4]+line_list[5:7])
-    #             cleanliness_dict[key]=line_list[9]
-
-    # this time we don't want to store all positions in memory (it's impossible for very weak filtering),
-    # so we create temporary files storing only cleanliness data for each position (these are smaller than the original files)
-    # print sample_name, chr, pos, mut, cleanliness
-    # or maybe just rename them, it should be quicker ?
-
-    # for init_res in glob.glob(params['output_dir']+'/tmp_isomut_*_mut.csv'):
-    #     with open(init_res) as f_h:
-    #         f_h.readline() #skip header
-    #         for line in f_h:
-    #             line_list=line.strip().split('\t')
-    #             # key='_'.join(line_list[:4]+line_list[5:7])
-    #             # cleanliness_dict[key]=line_list[9]
-    #             new_file_name = init_res.split('.')[0] + '_cl_orig.csv'
-    #             with open(new_file_name, 'a') as nf:
-    #                 nf.write(line_list[0] + '\t' + line_list[1] + '\t' + line_list[2] + '\t' + line_list[6] + '\t' + line_list[9] + '\n')
-
+    # saving original results for later
     for init_res in glob.glob(params['output_dir']+'/tmp_isomut2_*_mut.csv'):
         new_file_name = params['output_dir'] + '/' + init_res.split('.')[-2].split('/')[-1] + '_orig.csv'
         subprocess.check_call('mv ' + init_res + ' ' + new_file_name, shell=True)
-
-    # clean everything else
-    # subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut_*_mut.csv',shell=True)
 
     ##########################################
     #2nd round
@@ -1317,22 +1551,7 @@ def run_isomut2(params):
     #finalize output
     print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Finalizing output...')
 
-    # collect SNVs - let's do this later
-    # subprocess.check_call(
-    #     'tail -q -n+2 '+params['output_dir']+'/tmp_isomut_*_mut.csv | \
-    #     awk \'$4=="SNV" {print}\' | \
-    #     sort -n -k2,2 -k3,3 >> '+params['output_dir']+'/tmp_all_SNVs.isomut',shell=True)
-
-    #change cleanliness for the originally filtered one - let's do this differently
-    # with open(params['output_dir']+'/all_SNVs.isomut','w') as new_fh:
-    #     new_fh.write(header)
-    #     with open(params['output_dir']+'/tmp_all_SNVs.isomut') as old_fh:
-    #         for line in old_fh:
-    #             line_list=line.strip().split('\t')
-    #             key='_'.join(line_list[:4]+line_list[5:7])
-    #             if cleanliness_dict.has_key(key):
-    #                 new_fh.write('\t'.join(line_list[:9]+[cleanliness_dict[key]])+'\n')
-
+    # if the second round did not yield any mutations, keep the original ones, but issue warning
     number_of_files = subprocess.check_output('ls '+params['output_dir']+'/tmp_isomut2_*_mut.csv | wc -l', shell=True)
     number_of_files = int(number_of_files.strip())
 
