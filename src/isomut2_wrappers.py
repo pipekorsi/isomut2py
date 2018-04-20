@@ -15,6 +15,7 @@ import matplotlib
 # Force matplotlib to not use any Xwindows backend.
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+from matplotlib.patches import Rectangle
 
 from io import BytesIO
 import base64
@@ -23,11 +24,11 @@ import seaborn as sns
 sns.set(color_codes=True)
 sns.set_style("whitegrid")
 
-import pymc3 as pm
-import theano.tensor as tt
-import scipy as sp
-import scipy.stats as stats
-from scipy.stats import exponnorm
+# import pymc3 as pm
+# import theano.tensor as tt
+# import scipy as sp
+# import scipy.stats as stats
+# from scipy.stats import exponnorm
 
 
 # command line parameter "-d" for samtools
@@ -162,9 +163,12 @@ def PE_on_chrom(PEParams, chrom, prior_dict):
 
 def PE_on_range(dataframe, rmin, rmax, all_mu, all_sigma, prior, PEParams):
 
-    def px0(mean_diff):
-        k = -1*np.log(0.5)/1000
-        return np.exp(-1*k*mean_diff)
+    # def px0(mean_diff):
+    #     k = -1*np.log(0.5)/1000
+    #     return np.exp(-1*k*mean_diff)
+    #
+    # I = [0.786120288166023, 1]
+    # new_mean_dip = 0.5428682460756673
 
     temp = dataframe[(dataframe['pos']>= rmin) & (dataframe['pos']<= rmax)
                      & (dataframe['cov']>=PEParams['cov_min']) & (dataframe['cov']<=PEParams['cov_max'])]
@@ -176,181 +180,81 @@ def PE_on_range(dataframe, rmin, rmax, all_mu, all_sigma, prior, PEParams):
     cov_mean = temp['cov'].mean()
 
     posteriors = []
-    for ploidy in range(len(mu)):
+    for ploidy in range(len(all_mu)):
         likelihood = stats.norm.pdf(cov_mean, loc=all_mu[ploidy], scale=all_sigma[ploidy])
         posteriors.append(likelihood*prior[ploidy])
     posteriors = np.array(posteriors)
     most_probable_ploidy = np.argmax(posteriors) + 1
 
-
-    new_mean_dip = 0.5428682460756673
+    if (most_probable_ploidy == 1 or most_probable_ploidy == 3):
+        return most_probable_ploidy, 0
 
     mf_list = np.array(temp[temp['mut_freq'] >= 0.5]['mut_freq'])
-    mf_mean = np.mean(mf_list)
-    max_num_of_minority_alleles = int(np.floor(most_probable_ploidy/2))
+    if (len(mf_list) == 0):
+        return most_probable_ploidy, 0
 
-    # get average difference between measurement points
-
-    pos_all = np.array(temp.sort_values(by=['pos'])['pos'])
-    pos_diff = np.diff(pos_all)
-    prob_of_no_minority_allele = 1-px0(pos_diff.mean())
-    prob_of_other_minority_allele = (1-prob_of_no_minority_allele)/max_num_of_minority_alleles
-
-    minority_alleles_prior = [prob_of_no_minority_allele]+[prob_of_other_minority_allele]*max_num_of_minority_alleles
-    minority_alleles_posterior = []
-    number_of_unsure_bases = 2
-
-    likelihoods_all = []
-    for minority_alleles in range(max_num_of_minority_alleles+1):
-        if (minority_alleles == 0):
-            likelihood_ma = 1
-        elif (most_probable_ploidy%2 == 0 and minority_alleles == most_probable_ploidy/2):
-            likelihood_ma = stats.norm.pdf(mf_mean,
-                                        loc=new_mean_dip,
-                                        scale=(number_of_unsure_bases/all_mu[most_probable_ploidy-1])*(2/3))/I[0]
-        else:
-            likelihood_ma = stats.norm.pdf(mf_mean,
-                                        loc=1-(minority_alleles/most_probable_ploidy),
-                                        scale=(number_of_unsure_bases/all_mu[most_probable_ploidy-1])*(2/3))
-        likelihoods_all.append(likelihood_ma)
-        minority_alleles_posterior.append(likelihood_ma*minority_alleles_prior[minority_alleles])
-    minority_alleles_posterior = np.array(minority_alleles_posterior)
-
-    most_probable_ma_num = np.argmax(minority_alleles_posterior)
-    if (most_probable_ma_num != 1 and most_probable_ploidy > 1):
-        most_probable_loh = 1
     else:
-        most_probable_loh = 0
+        check_freqs = {2: [1/2, 1],
+                       4: [3/4, 1/2, 1],
+                       5: [4/5, 3/5, 1],
+                       6: [5/6, 1/2, 2/3, 1],
+                       7: [6/7, 5/7, 4/7, 1]}
+        allele_freq_conclusions = []
+
+        tested_all_allele_freqs = check_freqs[most_probable_ploidy]
+        for af in tested_all_allele_freqs:
+            if (af == 0.5):
+                likelihood = stats.halfnorm.pdf(mf_list, loc=af, scale=2/cov_mean).prod()
+            elif (af == 1):
+                likelihood = stats.halfnorm.pdf(2-mf_list, loc=af, scale=2/cov_mean).prod()
+            else:
+                likelihood = stats.norm.pdf(mf_list, loc=af, scale=2/cov_mean).prod()
+            allele_freq_conclusions.append(likelihood)
+        allele_freq_conclusions = np.array(allele_freq_conclusions)
+
+        if (np.argmax(allele_freq_conclusions) == 0):
+            most_probable_loh = 0
+        else:
+            most_probable_loh = 1
+
+
+    # mf_mean = np.mean(mf_list)
+    # max_num_of_minority_alleles = int(np.floor(most_probable_ploidy/2))
+    #
+    # # get average difference between measurement points
+    #
+    # pos_all = np.array(temp.sort_values(by=['pos'])['pos'])
+    # pos_diff = np.diff(pos_all)
+    # prob_of_no_minority_allele = 1-px0(pos_diff.mean())
+    # prob_of_other_minority_allele = (1-prob_of_no_minority_allele)/max_num_of_minority_alleles
+    #
+    # minority_alleles_prior = [prob_of_no_minority_allele]+[prob_of_other_minority_allele]*max_num_of_minority_alleles
+    # minority_alleles_posterior = []
+    # number_of_unsure_bases = 2
+    #
+    # likelihoods_all = []
+    # for minority_alleles in range(max_num_of_minority_alleles+1):
+    #     if (minority_alleles == 0):
+    #         likelihood_ma = 1
+    #     elif (most_probable_ploidy%2 == 0 and minority_alleles == most_probable_ploidy/2):
+    #         likelihood_ma = stats.norm.pdf(mf_mean,
+    #                                     loc=new_mean_dip,
+    #                                     scale=(number_of_unsure_bases/all_mu[most_probable_ploidy-1])*(2/3))/I[0]
+    #     else:
+    #         likelihood_ma = stats.norm.pdf(mf_mean,
+    #                                     loc=1-(minority_alleles/most_probable_ploidy),
+    #                                     scale=(number_of_unsure_bases/all_mu[most_probable_ploidy-1])*(2/3))
+    #     likelihoods_all.append(likelihood_ma)
+    #     minority_alleles_posterior.append(likelihood_ma*minority_alleles_prior[minority_alleles])
+    # minority_alleles_posterior = np.array(minority_alleles_posterior)
+    #
+    # most_probable_ma_num = np.argmax(minority_alleles_posterior)
+    # if (most_probable_ma_num != 1 and most_probable_ploidy > 1):
+    #     most_probable_loh = 1
+    # else:
+    #     most_probable_loh = 0
 
     return most_probable_ploidy, most_probable_loh
-
-# def PE_on_range(dataframe, rmin, rmax, haploid_cov, snp_density):
-#
-#     """
-#     Run ploidy estimation on a given range of a chromosome.
-#
-#     """
-#
-#     temp = dataframe[(dataframe['pos']>= rmin) & (dataframe['pos']<= rmax)
-#                      & (dataframe['cov']>=5) & (dataframe['cov']<=200)]
-#     if (temp.shape[0] == 0 or temp['pos'].max() == temp['pos'].min()):
-#         return 0, 0
-#
-#     mf_list = np.array(temp['mut_freq'])
-#     if (float(temp[(temp['mut_freq'] > 0.45) & (temp['mut_freq'] < 0.55)].shape[0])/temp.shape[0] < 0.2): # if values are not centralised around 0.5, transform to [0,0.5]
-#         mf_list = 1-mf_list*(mf_list>0.5)+(mf_list-1)*(mf_list<=0.5)
-#     mc = temp['cov'].mean()
-#     d_c = temp['cov'].std()
-#     # mrnf = 0.5-np.abs(0.5-temp['mut_freq'].mean())
-#     mrnf = np.mean(mf_list)
-#     d_rnf = np.std(mf_list)
-#     p_c = mc/haploid_cov
-#     p_rnf = float(1)/mrnf
-#     d_prnf = d_rnf/(mrnf)**2
-#     d_pc = d_c/haploid_cov
-#     error_pc = d_pc/p_c
-#     error_prnf = d_prnf/p_rnf
-#     if (error_pc+error_prnf != 0 and not np.isnan(error_pc) and not np.isnan(error_prnf)):
-#         error_pc_corr = error_pc/(error_pc+error_pc+error_prnf)
-#         error_prnf_corr = error_prnf/(error_pc+error_pc+error_prnf)
-#         if (error_prnf != 0 and error_pc != 0):
-#             s = error_prnf/error_pc
-#             x = 1/(2+1/s)
-#         else:
-#             s = 1
-#             x = 1/3
-#     else:
-#         error_pc_corr = 0
-#         error_prnf_corr = 0
-#         s = 1
-#         x = 1/3
-#     ##### LOH regions are not detected for ploidies higher than 4
-#
-#     # what to do when rnf suggests p = 1:
-#     if (round(p_rnf) == 1 and (np.abs(2-p_c) < np.abs(1-p_c))):
-#         return 2, 1 # diploid, but LOH
-#     elif (round(p_rnf) == 1 and (np.abs(2-p_c) > np.abs(1-p_c))):
-#         return 1, 0 # haploid, no LOH
-#     # what to do when rnf suggests p = 2:
-#     elif (round(p_rnf) == 2 and (np.abs(4-p_c) < np.abs(2-p_c))):
-#         return 4, 1 # tetraploid with two identical alleles (LOH)
-#     elif (round(p_rnf) == 2 and (np.abs(4-p_c) > np.abs(2-p_c))):
-#         p = 2
-#         loh = 0
-#         # if (float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< snp_density):
-#         #     loh = 1
-#         return p, loh
-#     # what to do when rnf and cov suggest very different p values:
-#     elif (np.abs(mc/haploid_cov-1/mrnf) >= 2.5):
-#         # p = np.min([int(round(p_c)), int(round(p_rnf))]) # use the smaller one
-#         p = int(round(p_c)) # or use the one suggested by coverage (this should be the most reliable if the mapping is correct, if not, rnf is worhtless as well)
-#         loh = 0
-#         # if (p > 1 and p < 5 and float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< 0.0015 and float(temp[temp['mut_freq']>0.5].shape[0])/temp[temp['mut_freq']<0.5].shape[0] < 0.3):
-#         if (p > 1 and p < 5 and float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< snp_density):
-#             loh = 1
-#         return p, loh # something strange, LOH questionable
-#     # what to do in general
-#     else:
-#         # if (round(p_c*(1-error_pc_corr)+p_rnf*(1-error_prnf_corr)) == round(p_c*(1-error_pc_corr)+p_rnf*(1-error_prnf_corr))):
-#         if (not np.isnan(p_c) and not np.isnan(p_rnf)):
-#             # what if the relative error of any of them is larger than 1? (very unreliable)
-#             if (error_pc > 1 and error_prnf < 1): # if rnf is more reliable, let that win - but should we?
-#                 p = int(round(p_rnf))
-#             elif (error_pc < 1 and error_prnf > 1): # if rnf is unreliable, use coverage
-#                 p = int(round(p_c))
-#             else: # both of them are reliable, calculate accurately
-#                 p = int(round(p_c*(1-error_pc_corr)+p_rnf*(1-error_prnf_corr)))
-#                 # p = int(round(p_c*x*2+p_rnf*x/s))
-#             loh = 0
-#             # if (p > 1 and p < 5 and float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< 0.0015 and float(temp[temp['mut_freq']>0.5].shape[0])/temp[temp['mut_freq']<0.5].shape[0] < 0.3):
-#             if (p > 1 and p < 5 and float(temp.shape[0])/(temp['pos'].max()-temp['pos'].min())< snp_density and round(p_c) != round(p_rnf)):
-#                 loh = 1
-#             return p, loh
-#         else:
-#             return 0, 0
-
-
-# def PE_on_chrom(chrom,
-#                 output_dir,
-#                 windowsize_PE,
-#                 shiftsize_PE,
-#                 haploid_cov,
-#                 snp_density):
-#     """
-#     Run ploidy estimation on a given chromosome.
-#
-#     """
-#
-#     df = pd.read_csv(output_dir + '/PEtmp_fullchrom_' + chrom + '.txt', sep='\t', names=['chrom', 'pos', 'cov', 'mut_freq']).sort_values(by='pos')
-#     df['chrom'] = df['chrom'].apply(str)
-#     pos_all = np.array(list(df['pos']))
-#     total_ploidy_a = np.array([0]*len(pos_all))
-#     total_loh_a = np.array([0]*len(pos_all))
-#     est_num_a = np.array([0]*len(pos_all))
-#     posstart = df['pos'].min()
-#     posmax = df['pos'].max()
-#     while (posstart < posmax):
-#         p, loh = PE_on_range(df, posstart, posstart+windowsize_PE, haploid_cov, snp_density)
-#         if (p > 0):
-#             total_ploidy_a += p*(pos_all>=posstart)*(pos_all<=posstart+windowsize_PE)
-#             total_loh_a += loh*(pos_all>=posstart)*(pos_all<=posstart+windowsize_PE)
-#             est_num_a += 1*(pos_all>=posstart)*(pos_all<=posstart+windowsize_PE)
-#         posstart += shiftsize_PE
-#     df['total_ploidy'] = total_ploidy_a
-#     df['total_loh'] = total_loh_a
-#     df['est_num'] = est_num_a
-#
-#     df['ploidy'] = (df['total_ploidy']/df['est_num']).round()
-#     df['LOH'] = (df['total_loh']/df['est_num']).round()
-#
-#     df = df[(~df['ploidy'].isnull()) & (~df['LOH'].isnull())]
-#     df['ploidy'] = df['ploidy'].astype(int)
-#     df['LOH'] = df['LOH'].astype(int)
-#
-#     df[['chrom', 'pos', 'cov', 'mut_freq', 'ploidy', 'LOH']].to_csv(output_dir + '/PE_fullchrom_' + chrom + '.txt', sep='\t', index=False)
-
-    # remove old file
-    # return subprocess.check_call('rm ' + output_dir + '/PEtmp_fullchrom_' + chrom + '.txt',shell=True)
 
 
 def PE_prepare_temp_files(PEParams, level=0):
@@ -359,7 +263,7 @@ def PE_prepare_temp_files(PEParams, level=0):
     positions with reference allele frequencies in the [min_noise, 1-min_noise] range."""
 
     starting_time = datetime.now()
-    print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Ploidy estimation on sample')
+    print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Preparing for parallelization...')
 
     #check for bedfile argument:
     if ('bedfile' not in PEParams):
@@ -425,44 +329,6 @@ def PE_prepare_temp_files(PEParams, level=0):
         cmd = 'rm ' + PEParams['output_dir'] + '/PEtmp_blockfile_' + c + '_*'
         subprocess.check_call(cmd,shell=True)
 
-    # print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Estimating haploid coverage by fitting an infinite mixture model to the coverage distribution...\n')
-    # raw_hc = estimate_hapcov_infmix()
-    # print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Raw estimate for the haploid coverage: ' + str(raw_hc) + '\n')
-    # print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Fitting equidistant Gaussians to the coverage distribution using the raw estimate as prior...\n')
-    # distribution_dict = fit_gaussians()
-    # print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Estimating local ploidy using the previously determined Gaussians as priors...\n')
-    # ploidy_estimation_on_genome()
-    #
-    # finish_time = datetime.now()
-    # total_time = finish_time-starting_time
-    # total_time_h = int(total_time.seconds/3600)
-    # total_time_m = int((total_time.seconds%3600)/60)
-    # total_time_s = (total_time.seconds%3600)%60
-    # print('\n'+'\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Ploidy estimation finished. (' + str(total_time.days) + ' day(s), ' + str(total_time_h) + ' hour(s), ' + str(total_time_m) + ' min(s), ' + str(total_time_s) + ' sec(s).)')
-
-
-    # estimating haploid coverage
-    # cmd = 'cat ' + PEParams['output_dir'] + '/*_tmp_HCE.txt > ' + PEParams['output_dir'] + '/raw_est_hapcov_file.txt'
-    # subprocess.check_call(cmd,shell=True)
-    # cmd = 'rm ' + PEParams['output_dir'] + '/*_tmp_HCE.txt'
-    # subprocess.check_call(cmd,shell=True)
-    # df = pd.read_csv(PEParams['output_dir'] + '/raw_est_hapcov_file.txt', sep='\t', names=['dip_cov_total', 'dip_count', 'trip_cov_total', 'trip_count'])
-    # avg_dip_cov = float(df['dip_cov_total'].sum())/df['dip_count'].sum()
-    # avg_trip_cov = float(df['trip_cov_total'].sum())/df['trip_count'].sum()
-    # AVG_HAP_COV = avg_dip_cov/2
-    # if (avg_trip_cov < avg_dip_cov): # "diploid" regions probably tetraploid
-    #     AVG_HAP_COV = avg_trip_cov/3
-    # elif ((avg_trip_cov-avg_dip_cov)/avg_dip_cov < 0.3): # "triploid" regions probably diploid ones with skewed mut_freqs
-    #     AVG_HAP_COV = avg_dip_cov/2
-    # else:
-    #     AVG_HAP_COV = np.mean([avg_dip_cov/2, avg_trip_cov/3])
-
-    # if ('avg_hap_cov' not in PEParams):
-    #     print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Raw estimate of haploid coverage: ' + str(AVG_HAP_COV))
-    #     return AVG_HAP_COV
-    # else:
-    #     print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - User-defined haploid coverage: ' + str(PEParams['avg_hap_cov']))
-    #     return PEParams['avg_hap_cov']
 
 def get_ploidy_ranges_for_chrom(outputdir, chrom, chr_list, before_list, after_list, pl_list, loh_list, chrom_len_dict):
     """
@@ -524,8 +390,11 @@ def estimate_hapcov_infmix(PEParams, level=0):
     for c in PEParams['chromosomes']:
         df = pd.read_csv(PEParams['output_dir']+'/' + 'PEtmp_fullchrom_' + c + '.txt', sep='\t', names=['chrom', 'pos', 'cov', 'rnf'])
         covs = np.append(covs, np.array(list(df['cov'])))
-    covs = covs[(covs<PEParams['max_cov'])*(covs>PEParams['min_cov'])]
+    covs = covs[(covs<PEParams['cov_max'])*(covs>PEParams['cov_min'])]
     covs_few = np.random.choice(covs, 2000)
+
+    if ('user_defined_hapcov' in PEParams):
+        return PEParams['user_defined_hapcov'], covs_few
 
     K = 20
     number_of_chains = 10
@@ -567,7 +436,7 @@ def estimate_hapcov_infmix(PEParams, level=0):
         comp_weights = trace.get_values('w', chains=[c]).mean(axis=0)
         comp_weights_sortidx = np.argsort(comp_weights)
         standard_means = trace.get_values('mu', chains=[c]).mean(axis=0)[comp_weights_sortidx]
-        true_means = standard_means * covdist.std() + covdist.mean()
+        true_means = standard_means * covs_few.std() + covs_few.mean()
         hc_maxweight = true_means[0]/(np.round(true_means[0]/true_means[true_means>PEParams['cov_min']].min()))
         hc_all_ests.append(hc_maxweight)
     hc_all_ests = np.array(hc_all_ests)
@@ -620,6 +489,256 @@ def fit_gaussians(PEParams, estimated_hapcov, coverage_distribution, level=0):
     return prior_dict
 
 
+def check_param_dict(PEParams, run_type='mutdet', level=0):
+    def set_value_to_default(dictionary_name, key_name, default_value):
+        if (key_name not in dictionary_name):
+            dictionary_name[key_name] = default_value
+            print('\t'*level + 'Value of "' + key_name + '" is not set, using default value: ' + str(default_value))
+
+    if (run_type == 'PE'):
+        all_default_keys = ['n_min_block', 'n_conc_blocks', 'chromosomes', 'chrom_length', 'windowsize', 'shiftsize', 'min_noise', 'base_quality_limit',
+                    'windowsize_PE', 'shiftsize_PE', 'cov_max', 'cov_min', 'hc_percentile']
+        all_default_values = [200, 4, [str(i) for i in range(1,23)]+['X', 'Y'], [248956422, 242193529, 198295559, 190214555, 181538259, 170805979, 159345973, 145138636,
+                                    138394717, 133797422, 135086622, 133275309, 114364328, 107043718, 101991189, 90338345,
+                                    83257441, 80373285, 58617616, 64444167, 46709983,
+                                    50818468, 156040895, 57227415],
+                             10000, 3000, 0.1, 30, 1000000, 50000, 200, 5, 75]
+
+        for k, v in zip(all_default_keys, all_default_values):
+            set_value_to_default(PEParams, k, v)
+
+        for k in ['ref_fasta', 'input_dir', 'output_dir', 'bam_filename']:
+            if (k not in PEParams):
+                print('\t'*level + 'Value of "' + k + '" is not set, exiting...')
+                return 1
+        return 0
+
+    elif (run_type == 'mutdet'):
+            all_default_keys = ['unique_mutations_only',
+                                'HTML_report',
+                                'n_min_block',
+                                'n_conc_blocks',
+                                'chromosomes',
+                                'min_sample_freq',
+                                'min_other_ref_freq',
+                                'cov_limit',
+                                'base_quality_limit',
+                                'min_gap_dist_snv',
+                                'min_gap_dist_indel',
+                                'use_local_realignment']
+            all_default_values = [True,
+                                    False,
+                                    200,
+                                    4,
+                                    [str(i) for i in range(1,23)]+['X', 'Y'],
+                                    0.21,
+                                    0.95,
+                                    5,
+                                    30,
+                                    0,
+                                    20,
+                                    False]
+
+            for k, v in zip(all_default_keys, all_default_values):
+                set_value_to_default(PEParams, k, v)
+
+            for k in ['ref_fasta', 'input_dir', 'output_dir', 'bam_filenames']:
+                if (k not in PEParams):
+                    print('\t'*level + 'Value of "' + k + '" is not set, exiting...')
+                    return 1
+            return 0
+
+def plot_karyotype_for_chrom(chrom, df):
+
+    covcolor = '#FFD700'
+    rnfcolor = (209 / 255., 10 / 255., 124 / 255.)
+    rnfalpha = 0.4
+    guidelinecolor = '#E6E6FA'
+
+    p = list(df.sort_values(by='pos')['pos'])
+    cov = list(df.sort_values(by='pos')['cov'])
+    rf = list(df.sort_values(by='pos')['mut_freq'])
+    pl = list(df.sort_values(by='pos')['ploidy'])
+    pl_i = list(float(1)/np.array(pl))
+    loh = np.array(list(df.sort_values(by='pos')['LOH']))
+    loh_change = np.where(loh[:-1] != loh[1:])[0]
+
+    f, ax1 = plt.subplots()
+    f.set_size_inches(20,10)
+    ax2 = ax1.twinx()
+    for i in range(len(loh_change)):
+        if (i==0 and loh[loh_change[i]] == 1):
+            w = p[loh_change[i]]-p[0]
+            k = Rectangle((p[0], 0), w, 1, alpha=0.1, facecolor='black', edgecolor='none')
+            ax2.add_patch(k)
+        if (loh[loh_change[i]] == 0):
+            if (i == len(loh_change)-1):
+                w = max(p)-p[loh_change[i]]
+            else:
+                w = p[loh_change[i+1]]-p[loh_change[i]]
+            k = Rectangle((p[loh_change[i]], 0), w, 1, alpha=0.1, facecolor='black', edgecolor='none')
+            ax2.add_patch(k)
+
+    ax1.plot(p, cov, c=covcolor)
+
+    for i in range(2,10):
+        ax2.plot(p, [1-float(1)/i]*len(p), c=guidelinecolor)
+        ax2.plot(p, [float(1)/i]*len(p), c=guidelinecolor)
+    ax2.scatter(p, rf, c='none', edgecolor=rnfcolor, alpha=rnfalpha)
+    ax2.scatter(p, pl_i, c='none', edgecolor='black', alpha=1)
+
+    ax2.set_ylabel('reference base frequency\n', size=15, color=rnfcolor)
+    ax1.set_xlabel('\n\ngenomic position', size=15)
+    ax2.yaxis.set_tick_params(labelsize=15, colors=rnfcolor)
+    ax2.xaxis.set_tick_params(labelsize=15)
+    ax1.xaxis.set_tick_params(labelsize=15)
+    ax1.set_ylabel('coverage\n', size=15, color=covcolor)
+    ax1.yaxis.set_tick_params(labelsize=15, colors=covcolor)
+    ax1.set_ylim([0,1000])
+    ax2.set_ylim([0,1])
+    ax2.set_xlim([min(p),max(p)])
+    ax1.spines['bottom'].set_color('lightgrey')
+    ax1.spines['top'].set_color('lightgrey')
+    ax1.spines['left'].set_color('lightgrey')
+    ax1.spines['right'].set_color('lightgrey')
+    ax2.spines['bottom'].set_color('lightgrey')
+    ax2.spines['top'].set_color('lightgrey')
+    ax2.spines['left'].set_color('lightgrey')
+    ax2.spines['right'].set_color('lightgrey')
+    plt.title('Chromosome: ' + chrom + '\n\n', size=20)
+
+    figfile = BytesIO()
+    plt.savefig(figfile, bbox_inches='tight', format='png')
+    plt.close()
+    figfile.seek(0)
+    figdata_png = base64.b64encode(figfile.getvalue())
+    return figdata_png
+
+def plot_karyotype_for_all_chroms(PEParams):
+    all_chrom_figfiles = []
+    for c in PEParams['chromosomes']:
+        df = pd.read_csv(PEParams['output_dir'] + '/PE_fullchrom_' + c + '.txt', sep='\t')
+        df = df[['chrom', 'pos', 'cov', 'mut_freq', 'ploidy', 'LOH']]
+        all_chrom_figfiles.append(plot_karyotype_for_chrom(c, df))
+    return all_chrom_figfiles
+
+def generate_HTML_report_for_ploidy_est(PEParams):
+
+    '''
+        - Plots ploidy estimates with BAF and coverage for all genomic positions where the reference allele frequency is in the range [min_noise, 1-min_noise].
+        - Generates a condensed karyotype plot for the whole genome. - Coming soon.
+    '''
+
+    FIG_all_chroms = plot_karyotype_for_all_chroms(PEParams=PEParams)
+
+    string_for_all_chroms = ''
+    for ch_figfile in FIG_all_chroms:
+        string_for_all_chroms +=  '''<img src="data:image/png;base64,''' + ch_figfile.decode('utf-8')+ '''" alt="detailed_PEs.png"><br>'''
+
+    # generating HTML report
+
+    html_string = '''
+    <html>
+    <style>
+        @import url(https://fonts.googleapis.com/css?family=Lora:400,700,400italic,700italic);
+        @import url(https://fonts.googleapis.com/css?family=Open+Sans:800)
+        @import url(http://fonts.googleapis.com/css?family=Lato|Source+Code+Pro|Montserrat:400,700);
+        @import url(https://fonts.googleapis.com/css?family=Raleway);
+        @import "font-awesome-sprockets";
+        @import "font-awesome";
+
+        body {
+            font-family: 'Lora', 'Times New Roman', serif;
+            font-size: 12pt;
+            line-height: 145%;}
+
+        p {
+          text-align: justify;}
+
+        h1,h2,h3,h4,h5,h6 {
+          font-family: 'Open Sans', sans-serif;
+          font-weight: 800;
+          line-height: 145%;}
+
+        h1 {
+          font-size: 4rem;}
+        h2 {
+          font-size: 3.5rem;}
+
+        .MathJax{
+            font-size: 7pt;}
+
+        img {
+            text-align:center;
+            display:block;}
+
+        </style>
+        <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+        <script>
+            MathJax.Hub.Config({
+            tex2jax: {inlineMath: [['$','$']]}
+            });
+        </script>
+
+        <head>
+            <meta charset="utf-8">
+        </head>
+        <body>
+            <h2>IsoMut2 results - ploidy estimation</h2>
+            <br>
+            Date and time of analysis: ''' + str(datetime.now()).split('.')[0] + ''' <br><br>
+            Data stored at: <br>
+            ''' + PEParams['output_dir'] + ''' <br><br>
+            <h3>Local ploidy estimates throughout the whole genome:</h3>
+            Only those positions are included on the plots below, where the reference nucleotide frequency is in
+            the range [''' + str(PEParams['min_noise']) + ''', ''' + str(1-PEParams['min_noise']) + '''].
+            <br><br>
+            On the figures below yellow lines represent <i>coverage</i>, and purple dots the <i>reference nucleotide frequency</i> values for the above defined
+            genomic positions. Black dots show the <i>inverse of the estimated copy number</i> at the given position. Grey rectangles indicate LOH (loss of
+            heterozygosity) regions.
+            <br><br>''' + string_for_all_chroms
+
+            # +'''<h3>Summary karyotype plot for the whole genome:</h3>
+            # Regions under ''' + str(PEParams['minimum_region_size']) + ''' base pairs are merged to larger, adjacent regions for cleaner plotting.
+            # The figure below show ROC curves for the number of false positive and true positive mutations grouped by mutation
+            # types and ploidies. The score threshold is varied along the curves. False positives are defined as the maximum
+            # number of <i>unique</i> mutations found in any of the control samples with the given score threshold (for the given mutation
+            # type and ploidy). The average number of <i>unique</i> mutations in the treated samples for the given score threshold
+            # is defined as the number of true positives. (Strictly speaking, this is an inaccurate definition, but it
+            # allows for rapid optimisation.)
+            # <br>
+            # The large dot at a specific point of the curve represents the score threshold
+            # that fits the user defined value of the maximum number of false positives per genome. As false positives
+            # are expected to occur randomly, when regions of multiple
+            # ploidies are present in the investigated genomes, the allowed false positives are divided between these based on
+            # the ratio of the original mutations (without score filter) present in the given ploidy region.
+            # (For example, if most of the genome is
+            # diploid, it follows that most of the original mutations arise from diploid regions as well, thus most of the
+            # false positives should be in diploid regions also.)
+            # Thus $FP_{p} = \lfloor \\frac{M_p}{M} \cdot FP \\rfloor$,
+            # where $p$ is the ploidy, $FP_p$ is the integer number of false positives in regions with ploidy $p$, $M_p$ is the
+            # number of non-filtered <i>unique</i> mutations in regions with ploidy $p$, $M$ is the total number of non-filtered
+            # <i>unique</i> mutations
+            # and $FP$ is the
+            # user-defined maximum number of false positives per genome. The following hold true:
+            # $M = \sum_p{M_p}$ and $FP \geq \sum_p{FP_p}$.
+            # <br><br>
+            # <img src="data:image/png;base64,''' + FIG_ROC.decode('utf-8') + '''" alt="ROC_curves.png"><br>
+            # <h3>Filtered results:</h3>
+            # The figures below show the number of filtered <i>unique</i> mutations found in the samples, grouped by mutation type.
+            # Bars with different hues for a single sample represent mutations arising from regions with different ploidies.
+            # Control samples are marked with different color for straightforward interpretation.
+            # The expected result is small bars for control samples and higher bars for the others. If this is not the case,
+            # check the tuning curves for clues.
+            # <br>
+            # <img src="data:image/png;base64,''' + FIG_filtered_muts.decode('utf-8') + '''" alt="filtered_muts.png"><br>'''
+
+    html_string += '''
+            </body>
+        </html>'''
+
+    with open(PEParams['output_dir']+'/PEreport.html','w') as f:
+        f.write(html_string)
 
 def ploidy_estimation(PEParams, level=0):
 
@@ -637,27 +756,47 @@ def ploidy_estimation(PEParams, level=0):
         In the fifth step, a final bed file and a HTML report of the results are generated.
     """
 
+    import pymc3 as pm
+    import theano.tensor as tt
+    import scipy as sp
+    import scipy.stats as stats
+    from scipy.stats import exponnorm
+
     starting_time = datetime.now()
     print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Ploidy estimation for file ' + PEParams['bam_filename'])
     print('\n')
 
+    print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Checking parameter values...\n')
+    is_there_error = check_param_dict(PEParams, run_type='PE', level=level+2)
 
+    if (is_there_error == 1):
+        return
 
     PE_prepare_temp_files(PEParams, level=level+1)
 
-    print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Estimating haploid coverage by fitting an infinite mixture model to the coverage distribution...\n')
-    raw_hc, covdist = estimate_hapcov_infmix(PEParams, level=level+2)
-    print('\t'*(level+2) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Raw estimate for the haploid coverage: ' + str(raw_hc) + '\n')
-    print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Fitting equidistant Gaussians to the coverage distribution using the raw estimate as prior...\n')
+    if ('user_defined_hapcov' in PEParams):
+        print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Collecting data for coverage distribution, using user-defined haploid coverage (' + str(PEParams['user_defined_hapcov']) + ')...\n')
+        raw_hc, covdist = estimate_hapcov_infmix(PEParams, level=level+2)
+    else:
+        print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Estimating haploid coverage by fitting an infinite mixture model to the coverage distribution...\n')
+        raw_hc, covdist = estimate_hapcov_infmix(PEParams, level=level+2)
+        print('\t'*(level+2) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Raw estimate for the haploid coverage: ' + str(raw_hc) + '\n')
+
+    print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Fitting equidistant Gaussians to the coverage distribution using the raw haploid coverage as prior...\n')
     distribution_dict = fit_gaussians(PEParams, raw_hc, covdist, level=level+2)
+    print('\t'*(level+2) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Final estimate for the haploid coverage: ' + str(distribution_dict['mu'][0]) + '\n')
     print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Estimating local ploidy using the previously determined Gaussians as priors on chromosomes: ', end=' ')
     for c in PEParams['chromosomes']:
         print(c,end=" ")
         sys.stdout.flush()
         PE_on_chrom(PEParams=PEParams, chrom=c, prior_dict=distribution_dict)
 
-    print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Generating final bed file... \n')
+    print('\n\n'+'\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Generating final bed file... \n')
     get_bed_format_for_sample(PEParams)
+
+    print('\n'+'\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Generating HTML report... \n')
+    get_bed_format_for_sample(PEParams)
+    generate_HTML_report_for_ploidy_est(PEParams)
 
     finish_time = datetime.now()
     total_time = finish_time-starting_time
@@ -665,113 +804,6 @@ def ploidy_estimation(PEParams, level=0):
     total_time_m = int((total_time.seconds%3600)/60)
     total_time_s = (total_time.seconds%3600)%60
     print('\n'+'\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Ploidy estimation finished. (' + str(total_time.days) + ' day(s), ' + str(total_time_h) + ' hour(s), ' + str(total_time_m) + ' min(s), ' + str(total_time_s) + ' sec(s).)')
-
-    # print('\n')
-    # print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Preliminary ploidy estimation on chromosomes: ', end=' ')
-    # for c in PEParams['chromosomes']:
-    #     print(c,end=" ")
-    #     sys.stdout.flush()
-    #     PE_on_chrom(chrom=c, haploid_cov=avg_hap_cov, output_dir=PEParams['output_dir'], shiftsize_PE=PEParams['shiftsize_PE'], windowsize_PE=PEParams['windowsize_PE'], snp_density = 0.0015)
-
-    # print('\n')
-    # print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Re-estimating average haploid coverage, SNP density... ')
-    # dipcovmean=[]
-    # snp_dens = []
-    # for c in PEParams['chromosomes']:
-    #     df = pd.read_csv(PEParams['output_dir'] + '/PE_fullchrom_' + c + '.txt', sep='\t')
-    #     if (df[df['ploidy']==2].shape[0] > 0):
-    #         dipcovmean.append(df[df['ploidy']==2]['cov'].mean())
-    #     snp_dens.append(float(df.shape[0])/(df['pos'].max()-df['pos'].min()))
-    # snp_density_corr = np.mean(snp_dens)*0.4
-    # avg_hap_cov = np.mean(dipcovmean)/2
-    # print('\n')
-    # print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - New estimation of average haploid coverage: ' + str(avg_hap_cov))
-    # print('\n')
-    # print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Estimated maximum SNP density in LOH regions: ' + str(snp_density_corr))
-    #
-    # print('\n')
-    # print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Final ploidy estimation on chromosomes: ', end=' ')
-    # for c in PEParams['chromosomes']:
-    #     print(c, end=" ")
-    #     sys.stdout.flush()
-    #     PE_on_chrom(chrom=c, haploid_cov=avg_hap_cov, output_dir=PEParams['output_dir'], shiftsize_PE=PEParams['shiftsize_PE'], windowsize_PE=PEParams['windowsize_PE'], snp_density=snp_density_corr)
-    #
-    # print('\n')
-    # print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Generating final bed file... \n')
-    # get_bed_format_for_sample(PEParams)
-    #
-    # print('\n')
-    # print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Done')
-
-# def plot_karyotype_detailed(PEParams):
-#     for c in PEParams['chromosomes']:
-#         df = pd.read_csv(PEParams['output_dir'] + '/PE_fullchrom_' + c + '.txt', sep='\t')
-#
-#         covcolor = '#FFD700'
-#         rnfcolor = (209 / 255., 10 / 255., 124 / 255.)
-#         rnfalpha = 0.4
-#         guidelinecolor = '#E6E6FA'
-#
-#         p = list(df.sort_values(by='pos')['pos'])
-#         cov = list(df.sort_values(by='pos')['cov'])
-#         rf = list(df.sort_values(by='pos')['mut_freq'])
-#         pl = list(df.sort_values(by='pos')['ploidy'])
-#         pl_i = list(1/np.array(pl))
-#         loh = np.array(list(df.sort_values(by='pos')['LOH']))
-#         loh_change = np.where(loh[:-1] != loh[1:])[0]
-#
-#         f, ax1 = plt.subplots()
-#         f.set_size_inches(20,10)
-#         ax2 = ax1.twinx()
-#         for i in range(len(loh_change)):
-#             if (i==0 and loh[loh_change[i]] == 1):
-#                 w = p[loh_change[i]]-p[0]
-#                 k = Rectangle((p[0], 0), w, 1, alpha=0.1, facecolor='black', edgecolor='none')
-#                 ax2.add_patch(k)
-#             if (loh[loh_change[i]] == 0):
-#                 if (i == len(loh_change)-1):
-#                     w = max(p)-p[loh_change[i]]
-#                 else:
-#                     w = p[loh_change[i+1]]-p[loh_change[i]]
-#                 k = Rectangle((p[loh_change[i]], 0), w, 1, alpha=0.1, facecolor='black', edgecolor='none')
-#                 ax2.add_patch(k)
-#
-#         ax1.plot(p, cov, c=covcolor)
-#
-#         for i in range(2,10):
-#             ax2.plot(p, [1-float(1)/i]*len(p), c=guidelinecolor)
-#             ax2.plot(p, [float(1)/i]*len(p), c=guidelinecolor)
-#         ax2.scatter(p, rf, c='none', edgecolor=rnfcolor, alpha=rnfalpha)
-#         ax2.scatter(p, pl_i, c='none', edgecolor='black', alpha=1)
-#
-#         if ('vert_lines' in kwargs):
-#             for l in kwargs['vert_lines']:
-#                 ax2.plot([l, l], [0, 1], c='black', lw=4)
-#
-#         ax2.set_ylabel('reference base frequency\n', size=15, color=rnfcolor)
-#         ax1.set_xlabel('\n\ngenomic position', size=15)
-#         ax2.yaxis.set_tick_params(labelsize=15, colors=rnfcolor)
-#         ax2.xaxis.set_tick_params(labelsize=15)
-#         ax1.xaxis.set_tick_params(labelsize=15)
-#         ax1.set_ylabel('coverage\n', size=15, color=covcolor)
-#         ax1.yaxis.set_tick_params(labelsize=15, colors=covcolor)
-#         ax1.set_ylim([0,1000])
-#         ax2.set_ylim([0,1])
-#         ax2.set_xlim([min(p),max(p)])
-#         ax1.spines['bottom'].set_color('lightgrey')
-#         ax1.spines['top'].set_color('lightgrey')
-#         ax1.spines['left'].set_color('lightgrey')
-#         ax1.spines['right'].set_color('lightgrey')
-#         ax2.spines['bottom'].set_color('lightgrey')
-#         ax2.spines['top'].set_color('lightgrey')
-#         ax2.spines['left'].set_color('lightgrey')
-#         ax2.spines['right'].set_color('lightgrey')
-#         plt.title('Chromosome ' + c + '\n\n', size=20)
-#
-#         print('')
-#         f.tight_layout()
-#         plt.show()
-#         plt.close(f)
 
 
 def run_isomut2_on_block(chrom,from_pos,to_pos,
@@ -879,39 +911,6 @@ def run_isomut2_in_parallel(params, level=0):
 
     print('\n' + '\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Finished this round.\n')
 
-# def run_ploidy_est(params):
-#     """
-#     Run IsoMutPE on the bam file specified in params dict, with params specified in params dict.
-#
-#     """
-#
-#     print 'Current time: ' + time.strftime("%Y-%m-%d %H:%M:%S", time.gmtime())
-#     print '\n' + '-'*100 + '\n'
-#
-#     ##########################################
-#     # get rough estimation of average haploid coverage
-#     print time.strftime("%H:%M:%S", time.gmtime()) + ' - Estimating average haploid coverage throughout the genome based on reference base frequencies...'
-#     raw_estimate_of_hapcov(params)
-#
-#     ##########################################
-#     # running ploidy estimation with estimated haploid_cov
-#     print time.strftime("%H:%M:%S", time.gmtime()) + ' - Running ploidy estimation with raw estimate of haploid coverage...'
-#     run_ploidy_est_in_parallel(params)
-#
-#     ##########################################
-#     # refining estimation if necesarry
-#     if (params['rerun_hapcov_estimation']):
-#         print time.strftime("%H:%M:%S", time.gmtime()) + ' - Estimating average haploid coverage based on previously identified regions...'
-#         new_estimate_of_hapcov(params)
-#         print time.strftime("%H:%M:%S", time.gmtime()) + ' - Running ploidy estimation with the new estimate of haploid coverage...'
-#         run_ploidy_est_in_parallel(params)
-#
-#     ##########################################
-#     # finalizing results
-#     print time.strftime("%H:%M:%S", time.gmtime()) + ' - Finalizing results...'
-#     print time.strftime("%H:%M:%S", time.gmtime()) + ' - Cleaning up...'
-#     print '\n'
-#     print time.strftime("%H:%M:%S", time.gmtime()) + ' - Done.'
 
 def plot_tuning_curve(dataframe, params):
 
@@ -1300,7 +1299,7 @@ def generate_HTML_report(params, score0=0):
     genome_length = params['genome_length']
     total_num_of_FPs_per_genome = params['FPs_per_genome']
 
-    df_SNV = pd.read_csv(IsoMut2_results_dir + 'unique_SNVs.isomut2',
+    df_SNV = pd.read_csv(IsoMut2_results_dir + 'unique_SNVs.isomut2', header=0,
                      names = ['sample_name', 'chr', 'pos', 'type', 'score',
                             'ref', 'mut', 'cov', 'mut_freq', 'cleanliness', 'ploidy'],
                      sep='\t',
@@ -1311,6 +1310,8 @@ def generate_HTML_report(params, score0=0):
                          sep='\t',
                          low_memory=False)
     df = pd.concat([df_SNV, df_indel])
+
+    df['ploidy'] = pd.to_numeric(df['ploidy'], errors='ignore')
 
     # df_somatic = df[~(df['sample_name'].str.contains(','))]
     df_somatic = df
@@ -1492,7 +1493,7 @@ def generate_HTML_report(params, score0=0):
         f.write(html_string)
 
 
-def run_isomut2(params):
+def run_isomut2(params, level=0):
     """
     Run IsoMut2 on the bam files specified in params dict, with params specified in params dict.
 
@@ -1500,74 +1501,109 @@ def run_isomut2(params):
 
     starting_time = datetime.now()
 
+    print('\t'*level + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Mutation detection with IsoMut2\n\n')
+
+    print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Checking parameter values...\n')
+    is_there_error = check_param_dict(params, run_type='mutdet', level=level+2)
+    if (is_there_error == 1):
+        return
+
     if (params['HTML_report']):
         if(('FPs_per_genome' not in params) or ('control_samples' not in params)):
             params['HTML_report'] = False
-            print('ERROR: Parameter dictionary does not contain parameters "FPs_per_genome" and/or "control_samples". HTML report will not be created.\n\n')
+            print('\t'*(level+2) + 'WARNING: Parameter dictionary does not contain parameters "FPs_per_genome" and/or "control_samples". HTML report will not be created.\n\n')
 
-    ##########################################
-    #run first round
-    print('Running IsoMut2: round 1/2\n\n')
-    run_isomut2_in_parallel(params, level=1)
+    if (not params['use_local_realignment']): # single run only without local realignment
+        print('\n' + '\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Running IsoMut2 without local realignment: \n\n')
+        run_isomut2_in_parallel(params, level=level+2)
 
-    ##########################################
-    #prepare for 2nd round
-    print('Running IsoMut2: round 2/2\n\n')
-    print('\t' + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Preparing files for post-processing...')
+        print('\t'*(level+2) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Finalizing output...')
 
-    # collect indels
-    header="#sample_name\tchr\tpos\ttype\tscore\tref\tmut\tcov\tmut_freq\tcleanliness\tploidy\n"
-    with open(params['output_dir']+'/all_indels.isomut2','w') as indel_f  :
-        #write header
-        indel_f.write(header)
-    #copy all indel lines except the header and sort them by chr, pos
-    subprocess.check_call(
-        'tail -q -n+2 ' +params['output_dir']+'/tmp_isomut2_*_mut.csv | \
-        awk \'$4=="INS" || $4=="DEL" {print}\' | \
-        sort -n -k2,2 -k3,3 >> '+params['output_dir']+'/all_indels.isomut2',shell=True)
-
-    # create bedfile for SNVs for post processing
-    subprocess.check_call(
-        'tail -q -n+2 ' +params['output_dir']+'/tmp_isomut2_*_mut.csv |\
-        awk \'$4=="SNV" {print}\' | \
-        sort -n -k2,2 -k3,3 | cut -f 2,3 > ' +params['output_dir']+'/tmp_isomut2.bed',shell=True)
-
-    # saving original results for later
-    for init_res in glob.glob(params['output_dir']+'/tmp_isomut2_*_mut.csv'):
-        new_file_name = params['output_dir'] + '/' + init_res.split('.')[-2].split('/')[-1] + '_orig.csv'
-        subprocess.check_call('mv ' + init_res + ' ' + new_file_name, shell=True)
-
-    ##########################################
-    #2nd round
-
-    # change params for postprocessing
-    params['base_quality_limit']= 13
-    params['min_other_ref_freq']= 0
-    params['samtools_flags'] = ' -d '+ str(SAMTOOLS_MAX_DEPTH)  + ' '
-    params['bedfile']=params['output_dir']+'/tmp_isomut2.bed'
-
-    #run it
-    run_isomut2_in_parallel(params, level=1)
-
-    ##########################################
-    #finalize output
-    print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Finalizing output...')
-
-    # if the second round did not yield any mutations, keep the original ones, but issue warning
-    number_of_files = subprocess.check_output('ls '+params['output_dir']+'/tmp_isomut2_*_mut.csv | wc -l', shell=True)
-    number_of_files = int(number_of_files.strip())
-
-    number_of_lines = subprocess.check_output('cat '+params['output_dir']+'/tmp_isomut2_*_mut.csv | wc -l', shell=True)
-    number_of_lines = int(number_of_lines.strip())
-
-    if (number_of_files == number_of_lines):
-        print('\tWARNING: Second round did not result in any mutations, using original results. (It is advised you take a closer look at the BAM files.)')
+        # collect indels
+        header="#sample_name\tchr\tpos\ttype\tscore\tref\tmut\tcov\tmut_freq\tcleanliness\tploidy\n"
+        with open(params['output_dir']+'/all_indels.isomut2','w') as indel_f  :
+            #write header
+            indel_f.write(header)
+        #copy all indel lines except the header and sort them by chr, pos
         subprocess.check_call(
-            'tail -q -n+2 '+params['output_dir']+'/tmp_isomut2_*_mut_orig.csv | \
+            'tail -q -n+2 ' +params['output_dir']+'/tmp_isomut2_*_mut.csv | \
+            awk \'$4=="INS" || $4=="DEL" {print}\' | \
+            sort -n -k2,2 -k3,3 >> '+params['output_dir']+'/all_indels.isomut2',shell=True)
+
+        # collect SNVs
+        with open(params['output_dir']+'/all_SNVs.isomut2','w') as SNV_f  :
+            #write header
+            SNV_f.write(header)
+
+        subprocess.check_call(
+            'tail -q -n+2 '+params['output_dir']+'/tmp_isomut2_*_mut.csv | \
             awk \'$4=="SNV" {print}\' | \
             sort -n -k2,2 -k3,3 >> '+params['output_dir']+'/all_SNVs.isomut2',shell=True)
 
+        print('\t'*(level+2) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Cleaning up temporary files...')
+        subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut.csv',shell=True)
+
     else:
+        ##########################################
+        #run first round
+
+        print('\n' + '\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Running IsoMut2: round 1/2 \n\n')
+        run_isomut2_in_parallel(params, level=level+2)
+
+        ##########################################
+        #prepare for 2nd round
+        print('\t'*(level+1) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Running IsoMut2: round 2/2\n\n')
+        print('\t'*(level+2) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Preparing files for post-processing...')
+
+        # collect indels
+        header="#sample_name\tchr\tpos\ttype\tscore\tref\tmut\tcov\tmut_freq\tcleanliness\tploidy\n"
+        with open(params['output_dir']+'/all_indels.isomut2','w') as indel_f  :
+            #write header
+            indel_f.write(header)
+        #copy all indel lines except the header and sort them by chr, pos
+        subprocess.check_call(
+            'tail -q -n+2 ' +params['output_dir']+'/tmp_isomut2_*_mut.csv | \
+            awk \'$4=="INS" || $4=="DEL" {print}\' | \
+            sort -n -k2,2 -k3,3 >> '+params['output_dir']+'/all_indels.isomut2',shell=True)
+
+        # create bedfile for SNVs for post processing
+        subprocess.check_call(
+            'tail -q -n+2 ' +params['output_dir']+'/tmp_isomut2_*_mut.csv |\
+            awk \'$4=="SNV" {print}\' | \
+            sort -n -k2,2 -k3,3 | cut -f 2,3 > ' +params['output_dir']+'/tmp_isomut2.bed',shell=True)
+
+        # saving original results for later
+        for init_res in glob.glob(params['output_dir']+'/tmp_isomut2_*_mut.csv'):
+            new_file_name = params['output_dir'] + '/' + init_res.split('.')[-2].split('/')[-1] + '_orig.csv'
+            subprocess.check_call('mv ' + init_res + ' ' + new_file_name, shell=True)
+
+        ##########################################
+        #2nd round
+
+        # change params for postprocessing
+        params['base_quality_limit']= 13
+        params['min_other_ref_freq']= 0
+        params['samtools_flags'] = ' -d '+ str(SAMTOOLS_MAX_DEPTH)  + ' '
+        params['bedfile']=params['output_dir']+'/tmp_isomut2.bed'
+
+        #run it
+        run_isomut2_in_parallel(params, level=level+2)
+
+        ##########################################
+        #finalize output
+        print('\t'*(level+2) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Finalizing output...')
+
+        # if the second round did not yield any mutations, keep the original ones, but issue warning
+        # number_of_files_old = subprocess.check_output('ls '+params['output_dir']+'/tmp_isomut2_*_mut_orig.csv | wc -l', shell=True)
+        # number_of_files_old = int(number_of_files.strip())
+
+        number_of_lines_old = subprocess.check_output('cat '+params['output_dir']+'/tmp_isomut2_*_mut_orig.csv | grep -v "^#" | wc -l', shell=True)
+        number_of_lines_old = int(number_of_lines.strip())
+        number_of_lines_new = subprocess.check_output('cat '+params['output_dir']+'/tmp_isomut2_*_mut.csv | grep -v "^#" | wc -l', shell=True)
+        number_of_lines_new = int(number_of_lines.strip())
+
+        print('\t'*(level+3) + ' - Discarded mutations due to BAQ realignment: ' + str(round(1-(number_of_lines_new/number_of_lines_old),2))) + '% (' + str(number_of_lines_old-number_of_lines_new) + ' total mutations).'
+
         for new_file_name in glob.glob(params['output_dir']+'/tmp_isomut2_*_mut.csv'):
             with open(new_file_name) as f_new:
                 # let's collect original cleanliness into a dict first
@@ -1594,26 +1630,30 @@ def run_isomut2(params):
                             f_final.write('\t'.join([cleanliness_dict[key][1]]+line_list[1:9]+[cleanliness_dict[key][0]]+[line_list[10]])+'\n')
 
         # now we collect SNVs
+        with open(params['output_dir']+'/all_SNVs.isomut2','w') as SNV_f  :
+            #write header
+            SNV_f.write(header)
+
         subprocess.check_call(
             'tail -q -n+2 '+params['output_dir']+'/tmp_isomut2_*_mut_final.csv | \
             awk \'$4=="SNV" {print}\' | \
             sort -n -k2,2 -k3,3 >> '+params['output_dir']+'/all_SNVs.isomut2',shell=True)
 
-    ##########################################
-    #clean up
-    print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Cleaning up temporary files...')
+        ##########################################
+        #clean up
+        print('\t'*(level+2) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Cleaning up temporary files...')
 
-    #clean up
-    subprocess.check_call(['rm',params['bedfile']])
-    # and now we can also remove the new files and the final files too
-    subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut.csv',shell=True)
-    subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut_final.csv',shell=True)
-    subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut_orig.csv',shell=True)
-    # subprocess.check_call('rm '+params['output_dir']+'/tmp_all_SNVs.isomut',shell=True)
+        #clean up
+        subprocess.check_call(['rm',params['bedfile']])
+        # and now we can also remove the new files and the final files too
+        subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut.csv',shell=True)
+        subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut_final.csv',shell=True)
+        # subprocess.check_call('rm '+params['output_dir']+'/tmp_isomut2_*_mut_orig.csv',shell=True)
+        # subprocess.check_call('rm '+params['output_dir']+'/tmp_all_SNVs.isomut',shell=True)
 
     #HTML report
     if (params['HTML_report']):
-        print(time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Generating HTML report...')
+        print('\t'*(level+2) + time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) + ' - Generating HTML report...')
         generate_HTML_report(params, score0=0)
 
     finish_time = datetime.now()
