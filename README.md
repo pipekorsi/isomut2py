@@ -126,5 +126,6 @@ Make sure to include the header.
 ## Coming soon:
 
 - option to automatically create ploidy bed files described above
+- option to include/exclude mutation present in all samples
 
 
