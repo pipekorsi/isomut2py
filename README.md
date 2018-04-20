@@ -15,6 +15,15 @@ Fast and accurate detection of both unique and shared mutations in isogenic samp
 ### Step 1: prerequisites
   - samtools
   - python 3
+    - for mutation detection and report generation:
+      - pandas
+      - numpy
+      - matplotlib
+      - seaborn
+    - for ploidy estimation:
+      - pymc3
+      - theano
+      - scipy
   - bam files of the investigated samples, indexed with samtools
   - fasta file of the reference genome, indexed with samtools
 
