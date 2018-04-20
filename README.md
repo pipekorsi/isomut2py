@@ -37,34 +37,61 @@ cd ../..
   - `input_dir`: path to directory with all the investigated bam files
   - `output_dir`: path to results directory
   - `bam_filenames`: list of all the names of the investigated bam files
-  - `chromosomes`: list of chromosomes to include
+  
+#### Parameters with valid default values:  
 
-#### Ploidy: *default is assuming diploid genomes for all regions of all samples*
+##### Use local realignment:
+  - `use_local_realignment`: (*default*: False)
+    - By default, mutation detection is run only once, with the [samtools mpileup](http://www.htslib.org/doc/samtools-1.2.html) command with option `-B`. This turns of the probabilistic realignment of reads while creating the temporary pileup file, which might result in false positives due to alignment error. To filter out these mutations, setting the above parameter to `True` runs the whole mutation detection pipeline again for possibly mutated positions without the `-B` option as well, and only those mutations are kept that are still present with the probabilistic realignment turned on. Setting `use_local_realignment = True` increases runtime.
+
+##### Investigated chromosomes:
+  - `chromosomes`: (*default*: 1, 2, ... 22, X, Y)
+    - list of chromosomes to include 
+    - if the chromosomes are referred to as "chrN" in your files, make sure to modify the list to exactly match them
+
+##### Ploidy:
   - Investigating non-diploid genomes with constant ploidy:
-    - `constant_ploidy`: set to the desired value (1 for haploid, 3 for triploid genomes, etc.)
+    - `constant_ploidy`: (*default*: 2)
+      - set to the desired value (1 for haploid, 3 for triploid genomes, etc.)
   - Investigating either samples of different ploidies or non-constant ploidies.
-    - `ploidy_info_filepath`: path to the file containing ploidy information (see below for details)
+    - `ploidy_info_filepath`: (*default*: no_ploidy_info)
+      - path to the file containing ploidy information (see below for details)
     
-#### Mutation type: *default is unique mutations only*
-  - `unique_mutations_only`: to search for non-unique mutations as well, set to `False` (this takes longer!)
+##### Mutation type:
+  - `unique_mutations_only`: (*default*: True)
+    - to search for non-unique mutations as well, set to `False` (this takes longer!)
   
-#### HTML report with optimisation: *by default, S score optimisation is not carried out*
-  - `HTML_report`: if you would like to optimise the *S* score and get a HTML report, set to `True` (if `True`, make sure to set the parameters below)
-  - `control_samples`: list of control samples (samples with presumably no unique mutations)
-  - `FPs_per_genome`: maximum number of false positive mutations per a single genome
- 
-#### Paralellisation: *default values can be kept*
+##### HTML report with optimisation:
+  - `HTML_report`: (*default*: False)
+    - if you would like to optimise the *S* score and get a HTML report, set to `True` (if `True`, make sure to set the parameters below)
+    - To produce a reliable set of final mutations, setting `HTML_report = True` is strongly suggested. However, if further manual filtering of the original results is desired, setting it to `False` results in decreased runtime.
+  - `control_samples`: (*default*: None)
+    - list of control samples (samples with presumably no unique mutations)
+    - only has effect when `HTML_report = True`
+  - `FPs_per_genome`: (*default*: None)
+    - maximum number of false positive mutations per a single genome
+    - only has effect when `HTML_report = True`
+    
+##### Paralellisation:
   - The genome will be broken up into separate segments (blocks) that can be processed in parallel.
-  - `n_min_block`: an approximate number of blocks to create (usually there will be slightly more)
-  - `n_conc_blocks`: number of concurrent block to run 
+  - `n_min_block`: (*default*: 200)
+    - an approximate number of blocks to create (usually there will be slightly more)
+  - `n_conc_blocks`: (*default*: 4)
+    - number of concurrent blocks to run 
   
-#### Mutation calling parameters: *default values can be kept*
-  - `min_sample_freq`: minimum alternate allele frequency in mutated samples
-  - `min_other_ref_freq`: minimum reference allele frequency in non-mutated samples
-  - `cov_limit`: minimum sequencing depth in mutated samples
-  - `base_quality_limit`: minimum base quality
-  - `min_gap_dist_snv`: minimum genomic distance from an identified SNV
-  - `min_gap_dist_indel`: minimum genomic distance from an identified indel
+##### Mutation calling parameters:
+  - `min_sample_freq`: (*default*: 0.21)
+    - minimum alternate allele frequency in mutated samples
+  - `min_other_ref_freq`: (*default*: 0.95)
+    - minimum reference allele frequency in non-mutated samples
+  - `cov_limit`: (*default*: 5)
+    - minimum sequencing depth in mutated samples
+  - `base_quality_limit`: (*default*: 30)
+    - minimum base quality
+  - `min_gap_dist_snv`: (*default*: 0)
+    - minimum genomic distance from an identified SNV
+  - `min_gap_dist_indel`: (*default*: 20)
+    - minimum genomic distance from an identified indel
   
 ### Step 4: run the script
 
