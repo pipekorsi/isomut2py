@@ -700,7 +700,7 @@ int call_snv_with_pl(struct mplp* saved_mutations, int* mut_ptr, struct mplp* my
              double sample_mut_freq_limit,double min_other_ref_freq_limit,int cov_limit,
              char* last_gap_chrom, int last_gap_pos_end, int proximal_gap_min_distance,
              int *ploidy_id, int *next_pos, int *current_ploidy, int * max_number_of_ranges, struct ploidy ** pl_r_array,
-              int unique_only){
+              int unique_only, int default_ploidy){
 
      //filter position if it is too close to last gap
     if ( last_gap_chrom != NULL && //no gap yet
@@ -730,7 +730,7 @@ int call_snv_with_pl(struct mplp* saved_mutations, int* mut_ptr, struct mplp* my
     //if we are only looking for unique mutations, it's faster
     if (unique_only == 1 && sample_idx >=0){
         //updating ploidy of the "most mutated" sample
-        update_ploidy(my_mplp, &sample_idx, ploidy_id, next_pos, current_ploidy, max_number_of_ranges, pl_r_array);
+        update_ploidy(my_mplp, &sample_idx, ploidy_id, next_pos, current_ploidy, max_number_of_ranges, pl_r_array, default_ploidy);
         int cp = current_ploidy[sample_idx];
         int other_idx;
         double min_other_ref_freq;
@@ -774,7 +774,7 @@ int call_snv_with_pl(struct mplp* saved_mutations, int* mut_ptr, struct mplp* my
     int alt_idx=base_2_idx[(int)mut_base];
 
     //updating ploidy values for ALL of the samples
-    update_ploidy_all(my_mplp, ploidy_id, next_pos, current_ploidy, max_number_of_ranges, pl_r_array);
+    update_ploidy_all(my_mplp, ploidy_id, next_pos, current_ploidy, max_number_of_ranges, pl_r_array, default_ploidy);
 
     //if the "most mutated sample" is not mutated enough (using the current ploidy), skip the position
     if (sample_mut_freq < (sample_mut_freq_limit)*2/current_ploidy[sample_idx]){
@@ -993,7 +993,7 @@ int call_indel_with_pl(struct mplp* saved_mutations, int* mut_ptr, struct mplp* 
                char* last_gap_chrom, int last_gap_pos_start,int last_gap_pos_end,
                int prox_gap_min_dist_SNV,int prox_gap_min_dist_indel,
                int *ploidy_id, int *next_pos, int *current_ploidy, int *max_number_of_ranges, struct ploidy ** pl_r_array,
-               int unique_only){
+               int unique_only, int default_ploidy){
 
     //filter position if it is too close to last gap
     if ( last_gap_chrom != NULL && //no gap yet
@@ -1024,7 +1024,7 @@ int call_indel_with_pl(struct mplp* saved_mutations, int* mut_ptr, struct mplp* 
     //if we are only looking for unique mutations, it's faster
     if (unique_only == 1 && sample_idx >= 0){
       //update the ploidy of the "most mutated" sample
-      update_ploidy(my_mplp, &sample_idx, ploidy_id, next_pos, current_ploidy, max_number_of_ranges, pl_r_array);
+      update_ploidy(my_mplp, &sample_idx, ploidy_id, next_pos, current_ploidy, max_number_of_ranges, pl_r_array, default_ploidy);
       int cp = current_ploidy[sample_idx];
       int other_idx;
       double min_other_noindel_freq;
@@ -1067,7 +1067,7 @@ int call_indel_with_pl(struct mplp* saved_mutations, int* mut_ptr, struct mplp* 
     //if we are looking for non-unique mutations as well, it's more complicated:
 
     //updating ploidy for ALL of the samples
-    update_ploidy_all(my_mplp, ploidy_id, next_pos, current_ploidy, max_number_of_ranges, pl_r_array);
+    update_ploidy_all(my_mplp, ploidy_id, next_pos, current_ploidy, max_number_of_ranges, pl_r_array, default_ploidy);
 
     //if the largest indel freq is still lower than the current limit, skip the position
     //(it is important to skip as many positions as possible without the lengthy evaluation process below)
@@ -1655,18 +1655,34 @@ int build_ploidy_ranges_array(char* ploidy_info_filename, struct ploidy ** pl_r_
     updating ploidy information for a given sample at a given genomic position
 */
 
-int update_ploidy(struct mplp* my_mplp, int *sample_id, int *ploidy_id, int *next_pos, int *current_ploidy, int *max_number_of_ranges, struct ploidy ** pl_r_array){
+int update_ploidy(struct mplp* my_mplp, int *sample_id, int *ploidy_id, int *next_pos, int *current_ploidy, int *max_number_of_ranges,
+                  struct ploidy ** pl_r_array, int default_ploidy){
     int i;
+    int found_it=0;
+    int found_min=INT_MAX;
     if (my_mplp->pos >= next_pos[(*sample_id)])
     {
         for (i=0;i<*max_number_of_ranges;i++)
         {
             //printf("i: %d\tchrom: %s\tpos_to: %d\tpos_from: %d\tploidy_est: %d\n", i, pl_r_array[ploidy_id[*sample_id]][i].chrom, pl_r_array[ploidy_id[*sample_id]][i].pos_to, pl_r_array[ploidy_id[*sample_id]][i].pos_from, pl_r_array[ploidy_id[*sample_id]][i].ploidy_est);
-            if ((pl_r_array[ploidy_id[*sample_id]][i].chrom != NULL) && (strcmp(pl_r_array[ploidy_id[*sample_id]][i].chrom, my_mplp->chrom) == 0) && (my_mplp->pos >= pl_r_array[ploidy_id[*sample_id]][i].pos_from) && (my_mplp->pos <= pl_r_array[ploidy_id[*sample_id]][i].pos_to))
+            if ((pl_r_array[ploidy_id[*sample_id]][i].chrom != NULL) && (strcmp(pl_r_array[ploidy_id[*sample_id]][i].chrom, my_mplp->chrom) == 0))
             {
-                current_ploidy[*sample_id] = pl_r_array[ploidy_id[*sample_id]][i].ploidy_est;
-                next_pos[*sample_id] = pl_r_array[ploidy_id[*sample_id]][i].pos_to+1;
-            }
+              if ((my_mplp->pos >= pl_r_array[ploidy_id[*sample_id]][i].pos_from) && (my_mplp->pos <= pl_r_array[ploidy_id[*sample_id]][i].pos_to))
+              {
+                  current_ploidy[*sample_id] = pl_r_array[ploidy_id[*sample_id]][i].ploidy_est;
+                  next_pos[*sample_id] = pl_r_array[ploidy_id[*sample_id]][i].pos_to+1;
+                  found_it = 1;
+              }
+              if ((my_mplp->pos < pl_r_array[ploidy_id[*sample_id]][i].pos_from) && (found_min > pl_r_array[ploidy_id[*sample_id]][i].pos_from))
+              {
+                  found_min = pl_r_array[ploidy_id[*sample_id]][i].pos_from;
+              }
+           }
+        }
+        if (found_it == 0)
+        {
+            current_ploidy[*sample_id] = default_ploidy;
+            next_pos[*sample_id] = found_min;
         }
     }
     return 0;
@@ -1676,20 +1692,38 @@ int update_ploidy(struct mplp* my_mplp, int *sample_id, int *ploidy_id, int *nex
     updating ploidy information for all samples
 */
 
-int update_ploidy_all(struct mplp* my_mplp, int *ploidy_id, int *next_pos, int *current_ploidy, int *max_number_of_ranges, struct ploidy ** pl_r_array){
+int update_ploidy_all(struct mplp* my_mplp, int *ploidy_id, int *next_pos, int *current_ploidy, int *max_number_of_ranges,
+                      struct ploidy ** pl_r_array, int default_ploidy){
     int i,j;
+    int found_it;
+    int found_min;
     for (j=0; j<my_mplp->n_samples;j++)
     {
+      found_it = 0;
+      found_min = INT_MAX;
       if (my_mplp->pos >= next_pos[j])
       {
           for (i=0;i<*max_number_of_ranges;i++)
           {
               //printf("i: %d\tchrom: %s\tpos_to: %d\tpos_from: %d\tploidy_est: %d\n", i, pl_r_array[ploidy_id[*sample_id]][i].chrom, pl_r_array[ploidy_id[*sample_id]][i].pos_to, pl_r_array[ploidy_id[*sample_id]][i].pos_from, pl_r_array[ploidy_id[*sample_id]][i].ploidy_est);
-              if ((pl_r_array[ploidy_id[j]][i].chrom != NULL) && (strcmp(pl_r_array[ploidy_id[j]][i].chrom, my_mplp->chrom) == 0) && (my_mplp->pos >= pl_r_array[ploidy_id[j]][i].pos_from) && (my_mplp->pos <= pl_r_array[ploidy_id[j]][i].pos_to))
+              if ((pl_r_array[ploidy_id[j]][i].chrom != NULL) && (strcmp(pl_r_array[ploidy_id[j]][i].chrom, my_mplp->chrom) == 0))
               {
-                  current_ploidy[j] = pl_r_array[ploidy_id[j]][i].ploidy_est;
-                  next_pos[j] = pl_r_array[ploidy_id[j]][i].pos_to+1;
+                if ((my_mplp->pos >= pl_r_array[ploidy_id[j]][i].pos_from) && (my_mplp->pos <= pl_r_array[ploidy_id[j]][i].pos_to))
+                {
+                    current_ploidy[j] = pl_r_array[ploidy_id[j]][i].ploidy_est;
+                    next_pos[j] = pl_r_array[ploidy_id[j]][i].pos_to+1;
+                    found_it = 1;
+                }
+                if ((my_mplp->pos < pl_r_array[ploidy_id[j]][i].pos_from) && (found_min <= pl_r_array[ploidy_id[j]][i].pos_from))
+                {
+                    found_min = pl_r_array[ploidy_id[j]][i].pos_from;
+                }
               }
+          }
+          if (found_it == 0)
+          {
+            current_ploidy[j] = default_ploidy;
+            next_pos[j] = found_min;
           }
       }
     }
@@ -1815,7 +1849,8 @@ int build_window_data(double ** window_data, char ** ch, int * pointer_wd, struc
 }
 
 int shift_window(double ** window_data, char ** ch, int * pointer_wd, int ws, int rows, int shift,
-             double min_noise, double* dip_cov_total, int* dip_count, double* trip_cov_total, int* trip_count){
+             double min_noise, double* dip_cov_total, int* dip_count, double* trip_cov_total, int* trip_count,
+             int print_every_nth){
 
     int i, j;
     i = 0;
@@ -1851,7 +1886,8 @@ int shift_window(double ** window_data, char ** ch, int * pointer_wd, int ws, in
     //shift window: print those positions from the shifted that meet the predefined criteria, shift the otherwise
     for (i=0;i<ws;i++)
     {
-      if (i<shift && window_data[i][2] > min_noise && window_data[i][2] < 1-min_noise) //these are filtered, then printed, diploid and triploid cov data updated
+      // if (i<shift && window_data[i][2] > min_noise && window_data[i][2] < 1-min_noise) //these are filtered, then printed, diploid and triploid cov data updated
+      if (i<shift && ((int) window_data[i][0] % print_every_nth == 0 || (window_data[i][2] > min_noise && window_data[i][2] < 1-min_noise))) //these are filtered, then printed, diploid and triploid cov data updated
       {
           printf("%s\t%d\t%f\t%f\n", ch[i], (int) window_data[i][0], window_data[i][3]/window_data[i][4], window_data[i][2]);
           if (window_data[i][2] > DIP_MIN_FREQ && window_data[i][2] < DIP_MAX_FREQ && window_data[i][3]/window_data[i][4] > MIN_COV_FOR_EST && window_data[i][3]/window_data[i][4] < MAX_COV_FOR_EST)
@@ -1890,7 +1926,8 @@ int shift_window(double ** window_data, char ** ch, int * pointer_wd, int ws, in
 }
 
 int print_last_window(double ** window_data, char ** ch, int ws,
-             double min_noise, double* dip_cov_total, int* dip_count, double* trip_cov_total, int* trip_count){
+             double min_noise, double* dip_cov_total, int* dip_count, double* trip_cov_total, int* trip_count,
+             int print_every_nth){
 
     int i;
     i = 0;
@@ -1924,7 +1961,8 @@ int print_last_window(double ** window_data, char ** ch, int ws,
     //print all positions meeting the criteria
     for (i=0;i<ws;i++)
     {
-      if (window_data[i][0] > 0 && window_data[i][2] > min_noise && window_data[i][2] < 1-min_noise)
+      // if (window_data[i][0] > 0 && window_data[i][2] > min_noise && window_data[i][2] < 1-min_noise)
+      if (window_data[i][0] > 0 && ((int) window_data[i][0] % print_every_nth == 0 || (window_data[i][2] > min_noise && window_data[i][2] < 1-min_noise))) //these are filtered, then printed, diploid and triploid cov data updated
       {
         printf("%s\t%d\t%f\t%f\n", ch[i], (int) window_data[i][0], window_data[i][3]/window_data[i][4], window_data[i][2]);
         if (window_data[i][2] > DIP_MIN_FREQ && window_data[i][2] < DIP_MAX_FREQ && window_data[i][3]/window_data[i][4] > MIN_COV_FOR_EST && window_data[i][3]/window_data[i][4] < MAX_COV_FOR_EST)

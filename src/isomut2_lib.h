@@ -286,7 +286,8 @@ int print_mutation(struct mplp* my_mplp);
 int call_snv_with_pl(struct mplp* saved_mutations, int* mut_ptr, struct mplp* my_mplp,
              double sample_mut_freq_limit,double min_other_ref_freq_limit,int cov_limit,
              char* last_gap_chrom, int last_gap_pos_end, int proximal_gap_min_distance,
-             int *ploidy_id, int *next_pos, int *current_ploidy, int * max_number_of_ranges, struct ploidy ** pl_r_array, int unique_only);
+             int *ploidy_id, int *next_pos, int *current_ploidy, int * max_number_of_ranges, struct ploidy ** pl_r_array, int unique_only,
+             int unique_ploidy);
 
 /*
     gets the highest not reference mut freq
@@ -324,7 +325,8 @@ int call_indel_with_pl(struct mplp* saved_mutations, int* mut_ptr, struct mplp* 
                double sample_mut_freq_limit,double min_other_ref_freq_limit,int cov_limit,
                char* last_gap_chrom, int last_gap_pos_start,int last_gap_pos_end,
                int prox_gap_min_dist_SNV,int prox_gap_min_dist_indel,
-               int *ploidy_id, int *next_pos, int *current_ploidy, int *max_number_of_ranges, struct ploidy ** pl_r_array, int unique_only);
+               int *ploidy_id, int *next_pos, int *current_ploidy, int *max_number_of_ranges, struct ploidy ** pl_r_array, int unique_only,
+             int unique_ploidy);
 
 
 /*
@@ -378,12 +380,12 @@ int build_ploidy_ranges_array(char* ploidy_info_filename, struct ploidy ** pl_r_
 /*
     update ploidy for single sample
 */
-int update_ploidy(struct mplp* my_mplp, int *sample_id, int *ploidy_id, int *next_pos, int *current_ploidy, int *max_number_of_ranges, struct ploidy ** pl_r_array);
+int update_ploidy(struct mplp* my_mplp, int *sample_id, int *ploidy_id, int *next_pos, int *current_ploidy, int *max_number_of_ranges, struct ploidy ** pl_r_array, int default_ploidy);
 
 /*
     update ploidy for all samples
 */
-int update_ploidy_all(struct mplp* my_mplp, int *ploidy_id, int *next_pos, int *current_ploidy, int *max_number_of_ranges, struct ploidy ** pl_r_array);
+int update_ploidy_all(struct mplp* my_mplp, int *ploidy_id, int *next_pos, int *current_ploidy, int *max_number_of_ranges, struct ploidy ** pl_r_array, int default_ploidy);
 
 /*
     checks for ploidy file
@@ -433,11 +435,11 @@ int build_window_data(double ** window_data, char ** ch, int * pointer_wd, struc
 */
 
 int shift_window(double ** window_data, char ** ch, int * pointer_wd, int ws, int rows, int shift,
-             double min_noise, double* dip_cov_total, int* dip_count, double* trip_cov_total, int* trip_count);
+             double min_noise, double* dip_cov_total, int* dip_count, double* trip_cov_total, int* trip_count, int print_every_nth);
 
 /*
     prints the last non-filled window to file
 */
 
 int print_last_window(double ** window_data, char ** ch, int ws,
-            double min_noise, double* dip_cov_total, int* dip_count, double* trip_cov_total, int* trip_count);
+            double min_noise, double* dip_cov_total, int* dip_count, double* trip_cov_total, int* trip_count, int print_every_nth);

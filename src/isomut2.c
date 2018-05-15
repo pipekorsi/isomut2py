@@ -119,7 +119,7 @@ int main(int argc, char** argv)
                  min_sample_freq,min_cleanliness,cov_limit,
                  last_gap_chrom,last_gap_pos_end,prox_gap_min_dist_SNV,
                  ploidy_id, next_pos_to_check, current_ploidy, &max_number_of_ranges, array_of_ranges,
-                 unique_only);
+                 unique_only, default_ploidy);
 
         //call indels with forward prox gap filtering
         call_indel_with_pl(potential_mutations,&mut_ptr,&my_mplp,
@@ -127,7 +127,7 @@ int main(int argc, char** argv)
                    last_gap_chrom,last_gap_pos_start,last_gap_pos_end,
                    prox_gap_min_dist_SNV,prox_gap_min_dist_indel,
                    ploidy_id, next_pos_to_check, current_ploidy, &max_number_of_ranges, array_of_ranges,
-                  unique_only);
+                  unique_only, default_ploidy);
 
         //update last gap position seen
         update_last_gap(&my_mplp,&last_gap_chrom,&last_gap_pos_start,&last_gap_pos_end,&is_gap);

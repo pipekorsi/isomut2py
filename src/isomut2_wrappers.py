@@ -91,6 +91,7 @@ def temp_file_from_block(chrom,from_pos,to_pos,
                          windowsize,
                          shiftsize,
                          min_noise,
+                         print_every_nth,
                          base_quality_limit,
                          bedfile,
                          samtools_flags):
@@ -118,7 +119,7 @@ def temp_file_from_block(chrom,from_pos,to_pos,
         cmd+=' -l '+bedfile+' '
     cmd+=input_dir+'/'+bam_file +' '
     cmd+=' 2>> '+output_dir+'/samtools.log | PEprep '
-    cmd+=' '.join(map(str,[windowsize,shiftsize,min_noise,
+    cmd+=' '.join(map(str,[windowsize,shiftsize,min_noise,print_every_nth,
                            base_quality_limit, cov_est_filename,bam_file])) +' '
     cmd+=' > ' +output_dir+'/PEtmp_blockfile_'+ chrom+'_'+str(from_pos)+'_'+str(to_pos)+'.csv'
 
@@ -281,7 +282,7 @@ def PE_prepare_temp_files(PEParams, level=0):
                      PEParams['input_dir'],PEParams['bam_filename'],
                      PEParams['output_dir'],PEParams['ref_fasta'],
                      PEParams['windowsize'],PEParams['shiftsize'],
-                     PEParams['min_noise'], PEParams['base_quality_limit'],
+                     PEParams['min_noise'], PEParams['print_every_nth'], PEParams['base_quality_limit'],
                      PEParams['bedfile'],PEParams['samtools_flags']])
 
     #create dir
@@ -497,12 +498,12 @@ def check_param_dict(PEParams, run_type='mutdet', level=0):
 
     if (run_type == 'PE'):
         all_default_keys = ['n_min_block', 'n_conc_blocks', 'chromosomes', 'chrom_length', 'windowsize', 'shiftsize', 'min_noise', 'base_quality_limit',
-                    'windowsize_PE', 'shiftsize_PE', 'cov_max', 'cov_min', 'hc_percentile']
+                    'windowsize_PE', 'shiftsize_PE', 'cov_max', 'cov_min', 'hc_percentile', 'print_every_nth']
         all_default_values = [200, 4, [str(i) for i in range(1,23)]+['X', 'Y'], [248956422, 242193529, 198295559, 190214555, 181538259, 170805979, 159345973, 145138636,
                                     138394717, 133797422, 135086622, 133275309, 114364328, 107043718, 101991189, 90338345,
                                     83257441, 80373285, 58617616, 64444167, 46709983,
                                     50818468, 156040895, 57227415],
-                             10000, 3000, 0.1, 30, 1000000, 50000, 200, 5, 75]
+                             10000, 3000, 0.1, 30, 1000000, 50000, 200, 5, 75, 100]
 
         for k, v in zip(all_default_keys, all_default_values):
             set_value_to_default(PEParams, k, v)
@@ -558,6 +559,7 @@ def plot_karyotype_for_chrom(chrom, df):
     p = list(df.sort_values(by='pos')['pos'])
     cov = list(df.sort_values(by='pos')['cov'])
     rf = list(df.sort_values(by='pos')['mut_freq'])
+    rf = list(1-np.array(rf))
     pl = list(df.sort_values(by='pos')['ploidy'])
     pl_i = list(float(1)/np.array(pl))
     loh = np.array(list(df.sort_values(by='pos')['LOH']))
@@ -756,10 +758,15 @@ def ploidy_estimation(PEParams, level=0):
         In the fifth step, a final bed file and a HTML report of the results are generated.
     """
 
+    global pm
     import pymc3 as pm
+    global tt
     import theano.tensor as tt
+    global sp
     import scipy as sp
+    global stats
     import scipy.stats as stats
+    global exponnorm
     from scipy.stats import exponnorm
 
     starting_time = datetime.now()

@@ -6,20 +6,21 @@ int main(int argc, char** argv)
     //parameters for haploid_cov estimation
     if(argc<7){
         printf("ERROR please provide 6 args \n windowsize (100000) \n shiftsize (50000)\n min_noise (0.1)\n");
-        printf(" base quality limit (30), \n output filename \n sample name \n");
+        printf(" print_every_nth_base (100), \n base quality limit (30), \n output filename \n sample name \n");
         exit(1);
     }
     int ws=(int) strtol(argv[1],NULL,10);
     int shift=(int) strtol(argv[2],NULL,10);
     double min_noise=strtod(argv[3],NULL);
-    int baseq_limit=(int) strtol(argv[4],NULL,10);
-    char * output_filename = argv[5];
-    int n_sample_names=argc-6;
+    int print_every_nth=(int) strtol(argv[4],NULL,10);
+    int baseq_limit=(int) strtol(argv[5],NULL,10);
+    char * output_filename = argv[6];
+    int n_sample_names=argc-7;
     char** sample_names= (char**) malloc(n_sample_names * sizeof(char*));
     //int MAX_CHROM_LEN = 100;
     int i, j;
     i=0;
-    for(i=0;i<n_sample_names;i++) sample_names[i]=argv[6+i];
+    for(i=0;i<n_sample_names;i++) sample_names[i]=argv[7+i];
 
     //define counting variables
     double dip_cov_total = 0;
@@ -75,12 +76,12 @@ int main(int argc, char** argv)
         if(pointer_windowdata == ws)
         {
           shift_window(window_data, chrom_array, &pointer_windowdata, ws, rows, shift,
-                       min_noise, &dip_cov_total, &dip_count, &trip_cov_total, &trip_count);
+                       min_noise, &dip_cov_total, &dip_count, &trip_cov_total, &trip_count, print_every_nth);
         }
     }
 
     print_last_window(window_data, chrom_array, ws,
-                      min_noise, &dip_cov_total, &dip_count, &trip_cov_total, &trip_count);
+                      min_noise, &dip_cov_total, &dip_count, &trip_cov_total, &trip_count, print_every_nth);
 
     FILE *file;
     file = fopen(output_filename, "w");
