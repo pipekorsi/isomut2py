@@ -1,0 +1,80 @@
+{
+ "cells": [
+  {
+   "cell_type": "markdown",
+   "metadata": {},
+   "source": [
+    "# General use cases\n",
+    "\n",
+    "## General steps for analyzing various, differently treated cell lines\n",
+    "\n",
+    "IsoMut2py works best if you have multiple samples that are isogenic, thus samples of the same essential genetic background that have been either treated with different chemicals or underwent different genomic modifications, for example to test different DNA repair pathways. However, it is possible to simultaneously analyze samples from multiple cell lines, just make sure that you have a few samples in each cell line group.\n",
+    "\n",
+    "If any of your cell lines have aneuploid genomes, see [this point](#Analysing-aneuploid-cell-lines) to prepare them for mutation detection. Once each of your non-diploid cell lines have a genome-wise ploidy estimation, you can feed this information to IsoMut2py by creating a ploidy info file first as described [here](PE_advanced.ipynb#Using-estimated-ploidies-as-input-for-mutation-detection).\n",
+    "\n",
+    "For mostly diploid cell lines, the above step can be skipped.\n",
+    "\n",
+    "Now you can run the actual mutation detection in a similar manner as described in [this example](getting_started.ipynb#Mutation-detection). For a complete list of available parameters, see the [documentation of the MutationCaller class](code_mutation_calling.rst). IsoMut2py searches for mutations unique to each sample by default, but if you wish to uncover shared mutations as well, see [this point](#Detecting-mutations-shared-among-samples). By default, the mutation detection is run only once without local realignment to decrease run time. This could introduce a low rate of false positives due to alignment errors. If you would like to filter these out, see [Using local realignment](#Using-local-realignment).\n",
+    "\n",
+    "Once the mutation detection is complete, a further optimization step is strongly encouraged to filter out false positive calls. This can be performed as described [here](getting_started.ipynb#Further-optimization). On the importance of control samples and optimizations, see [Optimization of mutation calls with control samples](#Optimization-of-mutation-calls-with-control-samples).\n",
+    "\n",
+    "If you happen to come across any suspicious mutation calls, you have the option to manually explore them in greater detail, as described in [Checking original sequencing data in ambiguous positions](#Checking-original-sequencing-data-in-ambiguous-positions).\n",
+    "\n",
+    "Once you are satisfied with the final set of mutations, you can further analyze these to decipher mutational signatures, decompose mutational spectra to the weighted contribution of reference signatures, plot mutations on rainfall plots or perform a hierarchical clustering of the analyzed samples as described [here](postprocessing.ipynb).\n",
+    "\n",
+    "## Detecting mutations shared among samples\n",
+    "\n",
+    "By default, IsoMut2py searches for mutations that are unique in a given sample, thus germline mutations are ignored. This is useful when one wishes to find mutations that arise randomly in samples as the result of a specific treatment, for example. However, in some cases it can be beneficial to also uncover mutations that are shared among different groups of samples. To do this, the `unique_mutations_only` parameter of the [MutationCaller object](code_mutation_calling.rst) should be set to `False`. This will result in an increased run time, but non-unique mutations will be detected as well.\n",
+    "\n",
+    "Even if the `unique_mutations_only` parameter is set to `False`, those mutations that are present in all analyzed samples will not be printed by default. These only contain information about the shared differences of the analyzed samples compared to the reference genome, thus they are rarely meaningful. If it essential for your specific goal to uncover these mutations as well, set the `print_shared_by_all` parameter to `True`. This increases both memory usage and computation time.\n",
+    "\n",
+    "## Using local realignment\n",
+    "\n",
+    "IsoMut2py first processes genomic positions by scanning through an mpileup file generated with the `samtools mpileup` command with the option `-B`, which prohibits the probabilistic realignment of the reads, thus maintaining the noise due to alignment errors. When positions are evaluated for possible mutations, the samples *not* containing the given mutation are expected to be extremely clean (defined by the parameter `min_other_ref_freq`), thus foregoing local realignment makes this criterion even stricter by making sure that the given position is not affected by alignment errors either.\n",
+    "\n",
+    "However, it is also possible that the alignment noise introduced by skipping local realignment could appear as a real mutation in a given sample, while the noise level remains below the threshold in other samples, thus introducing false positive mutations. To get rid of these, IsoMut2py can be run a second time, now *with* local realignment, only on those positions that have been identified as potential mutations in the first run. Only those of them are kept that pass the necessarry filtering steps without the alignment noise as well. This second run of analysis can be initiated by setting the parameter `use_local_realignment` of the [MutationCaller object](code_mutation_calling.rst) to `True`. Note that this will greatly increase run time.\n",
+    "\n",
+    "## Optimization of mutation calls with control samples\n",
+    "\n",
+    "IsoMut2py uses a set of hard filters (adjusted for local ploidy) to detect mutations. However, the results of the mutation calling pipeline can be greatly refined by performing an additional optimization step. The sequencing of control samples and using this optimization step is strongly encouraged, as this way instrument specific errors and offsets can be eliminated.\n",
+    "\n",
+    "A control sample is essentially defined as a sample where no unique mutations are expected to be found. Sequencing the same DNA twice produces two control samples, as the mutations found in these should be present in their pair as well. Starting clone samples in an experiment also work as control samples, as all subsequent clones should have all their initial mutations, regardless of their treatment. When sequencing tumor-normal pairs, the normal samples can be used as controls, as germline mutations are expected to be shared with respective the tumor sample.\n",
+    "\n",
+    "The list of control samples, along with the desired genome-wise false positive rate can be supplied to the [MutationCaller object](code_mutation_calling.rst) with the parameters `control_samples` and `FPs_per_genome`. (False positive rate is defined here as the number of false positives per the analyzed genome, so take the length of the genome into consideration when setting its value.)\n",
+    "\n",
+    "The optimization step uses the score values assigned to the mutations by the initial mutation detection algorithm. (These scores are based on the p-values of a Fisher's exact test for the bases found in the \"least mutated\" mutated sample and the \"least clean\" clean sample. The higher the score value, the more likely it is that the given mutation is real.) During the optimization, the score value that maximizes the number of unique mutations found in non-control samples while keeping the number of unique mutations in control samples below the threshold defined by `FPs_per_genome` is sought. Once the optimal score value is found, the initial set of mutations is filtered with this threshold. (Whenever the ploidy is non-constant in the genome, the optimization is performed for regions of different ploidies separately, while assigning a number of acceptable false positives to each region based on their length, while keeping their sum below the user defined threshold.)\n",
+    "\n",
+    "**Whenever possible, the above described optimization step is strongly encouraged.**\n",
+    "\n",
+    "## Checking original sequencing data in ambiguous positions\n",
+    "\n",
+    "Even after [optimization](#Optimization-of-mutation-calls-with-control-samples), it is entirely possible that you find some suspicious mutations in the final call set. For example, if you have samples from two different cell lines, a mutation in all of the samples from one cell line except the starting clone, and in none of the other samples would be unexpected. To manually check the sequencing information in these genomic positions to make an educated decision on keeping or discarding the mutation, you can use the `check_pileup` method of the [MutationCaller object](code_mutation_calling.rst). This will return a pandas DataFrame containing condensed information of the joint mpileup file of all analyzed samples in the specified genomic positions. The resulting DataFrame can be conveniently filtered based on the values in its columns.\n",
+    "\n",
+    "## Analysing aneuploid cell lines\n",
+    "\n",
+    "If any of your cell lines have aneuploid genomes, it is good practice to run an initial ploidy estimation on the starting clones of these cell lines. This can be done by following the steps described [here](PE_advanced.ipynb). Given that different treatments or specific genomic alterations tend to keep the original structure of the genome intact, it is usually enough to perform this step only on one sample for each cell line. However, if you expect your samples to have vastly different genomic structures, even if originating from the same cell line, make sure to run the above described ploidy estimation for each of your samples separately."
+   ]
+  }
+ ],
+ "metadata": {
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.5.3"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 2
+}

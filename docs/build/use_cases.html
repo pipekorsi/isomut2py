@@ -1,0 +1,283 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>General use cases &#8212; isomut2py 2.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="shortcut icon" href="_static/icon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Importing external mutations" href="external_mutations.html" />
+    <link rel="prev" title="Getting started" href="getting_started.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="General-use-cases">
+<h1>General use cases<a class="headerlink" href="#General-use-cases" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="General-steps-for-analyzing-various,-differently-treated-cell-lines">
+<h2>General steps for analyzing various, differently treated cell lines<a class="headerlink" href="#General-steps-for-analyzing-various,-differently-treated-cell-lines" title="Permalink to this headline">¶</a></h2>
+<p>IsoMut2py works best if you have multiple samples that are isogenic,
+thus samples of the same essential genetic background that have been
+either treated with different chemicals or underwent different genomic
+modifications, for example to test different DNA repair pathways.
+However, it is possible to simultaneously analyze samples from multiple
+cell lines, just make sure that you have a few samples in each cell line
+group.</p>
+<p>If any of your cell lines have aneuploid genomes, see <a class="reference external" href="#Analysing-aneuploid-cell-lines">this
+point</a> to prepare them for mutation
+detection. Once each of your non-diploid cell lines have a genome-wise
+ploidy estimation, you can feed this information to IsoMut2py by
+creating a ploidy info file first as described
+<a class="reference internal" href="PE_advanced.html#Using-estimated-ploidies-as-input-for-mutation-detection"><span class="std std-ref">here</span></a>.</p>
+<p>For mostly diploid cell lines, the above step can be skipped.</p>
+<p>Now you can run the actual mutation detection in a similar manner as
+described in <a class="reference internal" href="getting_started.html#Mutation-detection"><span class="std std-ref">this
+example</span></a>. For a complete
+list of available parameters, see the <a class="reference internal" href="code_mutation_calling.html"><span class="doc">documentation of the
+MutationCaller class</span></a>. IsoMut2py searches
+for mutations unique to each sample by default, but if you wish to
+uncover shared mutations as well, see <a class="reference external" href="#Detecting-mutations-shared-among-samples">this
+point</a>. By default, the
+mutation detection is run only once without local realignment to
+decrease run time. This could introduce a low rate of false positives
+due to alignment errors. If you would like to filter these out, see
+<a class="reference external" href="#Using-local-realignment">Using local realignment</a>.</p>
+<p>Once the mutation detection is complete, a further optimization step is
+strongly encouraged to filter out false positive calls. This can be
+performed as described
+<a class="reference internal" href="getting_started.html#Further-optimization"><span class="std std-ref">here</span></a>. On the importance
+of control samples and optimizations, see <a class="reference external" href="#Optimization-of-mutation-calls-with-control-samples">Optimization of mutation
+calls with control
+samples</a>.</p>
+<p>If you happen to come across any suspicious mutation calls, you have the
+option to manually explore them in greater detail, as described in
+<a class="reference external" href="#Checking-original-sequencing-data-in-ambiguous-positions">Checking original sequencing data in ambiguous
+positions</a>.</p>
+<p>Once you are satisfied with the final set of mutations, you can further
+analyze these to decipher mutational signatures, decompose mutational
+spectra to the weighted contribution of reference signatures, plot
+mutations on rainfall plots or perform a hierarchical clustering of the
+analyzed samples as described <a class="reference internal" href="postprocessing.html"><span class="doc">here</span></a>.</p>
+</div>
+<div class="section" id="Detecting-mutations-shared-among-samples">
+<h2>Detecting mutations shared among samples<a class="headerlink" href="#Detecting-mutations-shared-among-samples" title="Permalink to this headline">¶</a></h2>
+<p>By default, IsoMut2py searches for mutations that are unique in a given
+sample, thus germline mutations are ignored. This is useful when one
+wishes to find mutations that arise randomly in samples as the result of
+a specific treatment, for example. However, in some cases it can be
+beneficial to also uncover mutations that are shared among different
+groups of samples. To do this, the <code class="docutils literal notranslate"><span class="pre">unique_mutations_only</span></code> parameter
+of the <a class="reference internal" href="code_mutation_calling.html"><span class="doc">MutationCaller object</span></a> should be
+set to <code class="docutils literal notranslate"><span class="pre">False</span></code>. This will result in an increased run time, but
+non-unique mutations will be detected as well.</p>
+<p>Even if the <code class="docutils literal notranslate"><span class="pre">unique_mutations_only</span></code> parameter is set to <code class="docutils literal notranslate"><span class="pre">False</span></code>,
+those mutations that are present in all analyzed samples will not be
+printed by default. These only contain information about the shared
+differences of the analyzed samples compared to the reference genome,
+thus they are rarely meaningful. If it essential for your specific goal
+to uncover these mutations as well, set the <code class="docutils literal notranslate"><span class="pre">print_shared_by_all</span></code>
+parameter to <code class="docutils literal notranslate"><span class="pre">True</span></code>. This increases both memory usage and computation
+time.</p>
+</div>
+<div class="section" id="Using-local-realignment">
+<h2>Using local realignment<a class="headerlink" href="#Using-local-realignment" title="Permalink to this headline">¶</a></h2>
+<p>IsoMut2py first processes genomic positions by scanning through an
+mpileup file generated with the <code class="docutils literal notranslate"><span class="pre">samtools</span> <span class="pre">mpileup</span></code> command with the
+option <code class="docutils literal notranslate"><span class="pre">-B</span></code>, which prohibits the probabilistic realignment of the
+reads, thus maintaining the noise due to alignment errors. When
+positions are evaluated for possible mutations, the samples <em>not</em>
+containing the given mutation are expected to be extremely clean
+(defined by the parameter <code class="docutils literal notranslate"><span class="pre">min_other_ref_freq</span></code>), thus foregoing local
+realignment makes this criterion even stricter by making sure that the
+given position is not affected by alignment errors either.</p>
+<p>However, it is also possible that the alignment noise introduced by
+skipping local realignment could appear as a real mutation in a given
+sample, while the noise level remains below the threshold in other
+samples, thus introducing false positive mutations. To get rid of these,
+IsoMut2py can be run a second time, now <em>with</em> local realignment, only
+on those positions that have been identified as potential mutations in
+the first run. Only those of them are kept that pass the necessarry
+filtering steps without the alignment noise as well. This second run of
+analysis can be initiated by setting the parameter
+<code class="docutils literal notranslate"><span class="pre">use_local_realignment</span></code> of the <a class="reference internal" href="code_mutation_calling.html"><span class="doc">MutationCaller
+object</span></a> to <code class="docutils literal notranslate"><span class="pre">True</span></code>. Note that this will
+greatly increase run time.</p>
+</div>
+<div class="section" id="Optimization-of-mutation-calls-with-control-samples">
+<h2>Optimization of mutation calls with control samples<a class="headerlink" href="#Optimization-of-mutation-calls-with-control-samples" title="Permalink to this headline">¶</a></h2>
+<p>IsoMut2py uses a set of hard filters (adjusted for local ploidy) to
+detect mutations. However, the results of the mutation calling pipeline
+can be greatly refined by performing an additional optimization step.
+The sequencing of control samples and using this optimization step is
+strongly encouraged, as this way instrument specific errors and offsets
+can be eliminated.</p>
+<p>A control sample is essentially defined as a sample where no unique
+mutations are expected to be found. Sequencing the same DNA twice
+produces two control samples, as the mutations found in these should be
+present in their pair as well. Starting clone samples in an experiment
+also work as control samples, as all subsequent clones should have all
+their initial mutations, regardless of their treatment. When sequencing
+tumor-normal pairs, the normal samples can be used as controls, as
+germline mutations are expected to be shared with respective the tumor
+sample.</p>
+<p>The list of control samples, along with the desired genome-wise false
+positive rate can be supplied to the <a class="reference internal" href="code_mutation_calling.html"><span class="doc">MutationCaller
+object</span></a> with the parameters
+<code class="docutils literal notranslate"><span class="pre">control_samples</span></code> and <code class="docutils literal notranslate"><span class="pre">FPs_per_genome</span></code>. (False positive rate is
+defined here as the number of false positives per the analyzed genome,
+so take the length of the genome into consideration when setting its
+value.)</p>
+<p>The optimization step uses the score values assigned to the mutations by
+the initial mutation detection algorithm. (These scores are based on the
+p-values of a Fisher’s exact test for the bases found in the “least
+mutated” mutated sample and the “least clean” clean sample. The higher
+the score value, the more likely it is that the given mutation is real.)
+During the optimization, the score value that maximizes the number of
+unique mutations found in non-control samples while keeping the number
+of unique mutations in control samples below the threshold defined by
+<code class="docutils literal notranslate"><span class="pre">FPs_per_genome</span></code> is sought. Once the optimal score value is found, the
+initial set of mutations is filtered with this threshold. (Whenever the
+ploidy is non-constant in the genome, the optimization is performed for
+regions of different ploidies separately, while assigning a number of
+acceptable false positives to each region based on their length, while
+keeping their sum below the user defined threshold.)</p>
+<p><strong>Whenever possible, the above described optimization step is strongly
+encouraged.</strong></p>
+</div>
+<div class="section" id="Checking-original-sequencing-data-in-ambiguous-positions">
+<h2>Checking original sequencing data in ambiguous positions<a class="headerlink" href="#Checking-original-sequencing-data-in-ambiguous-positions" title="Permalink to this headline">¶</a></h2>
+<p>Even after
+<a class="reference external" href="#Optimization-of-mutation-calls-with-control-samples">optimization</a>,
+it is entirely possible that you find some suspicious mutations in the
+final call set. For example, if you have samples from two different cell
+lines, a mutation in all of the samples from one cell line except the
+starting clone, and in none of the other samples would be unexpected. To
+manually check the sequencing information in these genomic positions to
+make an educated decision on keeping or discarding the mutation, you can
+use the <code class="docutils literal notranslate"><span class="pre">check_pileup</span></code> method of the <a class="reference internal" href="code_mutation_calling.html"><span class="doc">MutationCaller
+object</span></a>. This will return a pandas
+DataFrame containing condensed information of the joint mpileup file of
+all analyzed samples in the specified genomic positions. The resulting
+DataFrame can be conveniently filtered based on the values in its
+columns.</p>
+</div>
+<div class="section" id="Analysing-aneuploid-cell-lines">
+<h2>Analysing aneuploid cell lines<a class="headerlink" href="#Analysing-aneuploid-cell-lines" title="Permalink to this headline">¶</a></h2>
+<p>If any of your cell lines have aneuploid genomes, it is good practice to
+run an initial ploidy estimation on the starting clones of these cell
+lines. This can be done by following the steps described
+<a class="reference internal" href="PE_advanced.html"><span class="doc">here</span></a>. Given that different treatments or
+specific genomic alterations tend to keep the original structure of the
+genome intact, it is usually enough to perform this step only on one
+sample for each cell line. However, if you expect your samples to have
+vastly different genomic structures, even if originating from the same
+cell line, make sure to run the above described ploidy estimation for
+each of your samples separately.</p>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/logo_Large.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="index.html">isomut2py</a></h1>
+
+
+
+<p class="blurb">Comprehensive detection and analysis of genomic mutations from NGS sequencing data</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">General use cases</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#General-steps-for-analyzing-various,-differently-treated-cell-lines">General steps for analyzing various, differently treated cell lines</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Detecting-mutations-shared-among-samples">Detecting mutations shared among samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Using-local-realignment">Using local realignment</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Optimization-of-mutation-calls-with-control-samples">Optimization of mutation calls with control samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Checking-original-sequencing-data-in-ambiguous-positions">Checking original sequencing data in ambiguous positions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Analysing-aneuploid-cell-lines">Analysing aneuploid cell lines</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="external_mutations.html">Importing external mutations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PE_advanced.html">Advanced ploidy estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="postprocessing.html">Further analysis, visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code.html">API reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="getting_started.html" title="previous chapter">Getting started</a></li>
+      <li>Next: <a href="external_mutations.html" title="next chapter">Importing external mutations</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Orsolya Pipek.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/use_cases.ipynb.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

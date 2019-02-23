@@ -1,0 +1,410 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Functions for plotting &#8212; isomut2py 2.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="shortcut icon" href="_static/icon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Functions for postprocessing lists of mutations" href="code_postprocessing_functions.html" />
+    <link rel="prev" title="PloidyEstimator object" href="code_ploidy_estimation.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="functions-for-plotting">
+<h1>Functions for plotting<a class="headerlink" href="#functions-for-plotting" title="Permalink to this headline">¶</a></h1>
+<p>Most of these functions can be called as methods of a <a class="reference internal" href="code_mutation_calling.html"><span class="doc">MutationCaller object</span></a>, but to make it more straightforward to analyse any set of (external) mutations, they can also be called individually.</p>
+<span class="target" id="module-isomut2py.plot"></span><dl class="function">
+<dt id="isomut2py.plot.generate_HTML_report_for_ploidy_est">
+<code class="descclassname">isomut2py.plot.</code><code class="descname">generate_HTML_report_for_ploidy_est</code><span class="sig-paren">(</span><em>chromosomes</em>, <em>output_dir</em>, <em>min_noise=nan</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.plot.generate_HTML_report_for_ploidy_est" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a HTML file with figures displaying the results of ploidy estimation and saves it to output_dir/PEreport.html.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>chromosomes</strong> – list of chromosomes in the genome (list of str)</li>
+<li><strong>output_dir</strong> – the path to the directory where PE_fullchrom_[chrom].txt files are located (str)</li>
+<li><strong>min_noise</strong> – the minimal B-allele frequency for a position to be included in the analyses (default: numpy.nan) (float)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="isomut2py.plot.plot_DNV_heatmap">
+<code class="descclassname">isomut2py.plot.</code><code class="descname">plot_DNV_heatmap</code><span class="sig-paren">(</span><em>matrixDict</em>, <em>return_string=False</em>, <em>normalize_to_1=False</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.plot.plot_DNV_heatmap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot DNVs (dinucleotide variations) as a heatmap for a database of mutations.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>matrixDict</strong> – a dictionary containing 12x12 element matrices as values and sample names as keys (dictionary)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+<li><strong>normalize_to_1</strong> – If True, results are plotted as percentages, instead of counts. (default: False) (bool)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a base64 encoded string of the image. Otherwise, nothing.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="isomut2py.plot.plot_DNV_spectrum">
+<code class="descclassname">isomut2py.plot.</code><code class="descname">plot_DNV_spectrum</code><span class="sig-paren">(</span><em>spectrumDict</em>, <em>return_string=False</em>, <em>normalize_to_1=False</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.plot.plot_DNV_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the DNV spectrum, given a dictionary containing the spectra as values.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>spectrumDict</strong> – a dictionary containing DNV spectra as values and sample names as keys (dictionary)</li>
+<li><strong>normalize_to_1</strong> – If True, results are plotted as percentages, instead of counts. (default: False) (bool)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a base64 encoded string of the image. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="isomut2py.plot.plot_SNV_spectrum">
+<code class="descclassname">isomut2py.plot.</code><code class="descname">plot_SNV_spectrum</code><span class="sig-paren">(</span><em>spectrumDict</em>, <em>return_string=False</em>, <em>normalize_to_1=False</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.plot.plot_SNV_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the triplet spectrum for a list of 96-element vectors defined in spectrumDict.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>spectrumDict</strong> – a dictionary containing spectra as values and sample names as keys (dictionary)</li>
+<li><strong>normalize_to_1</strong> – If True, results are plotted as percentages, instead of counts. (default: False) (bool)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a base64 encoded string of the image. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="isomut2py.plot.plot_coverage_distribution">
+<code class="descclassname">isomut2py.plot.</code><code class="descname">plot_coverage_distribution</code><span class="sig-paren">(</span><em>cov_sample=None</em>, <em>chromosomes=None</em>, <em>output_dir=None</em>, <em>cov_max=None</em>, <em>cov_min=None</em>, <em>distribution_dict=None</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.plot.plot_coverage_distribution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the coverage distribution of the sample.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>cov_sample</strong> – a sample of the coverage distribution (default: None) (array-like)</li>
+<li><strong>chromosomes</strong> – the list of chromosomes in the genome (default: None) (list of str)</li>
+<li><strong>output_dir</strong> – the path to the directory where PE_fullchrom_[chrom].txt files are located (default: None) (str)</li>
+<li><strong>cov_max</strong> – the maximum value for the coverage for a position to be included on the plot (default: None) (int)</li>
+<li><strong>cov_min</strong> – the minimum value for the coverage for a position to be included on the plot (default: None) (int)</li>
+<li><strong>distribution_dict</strong> – a dictionary containing the fitted parameters of the coverage distribution (default: None) (dictionary with keys: ‘mu’, ‘sigma’, ‘p’)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="isomut2py.plot.plot_hierarchical_clustering">
+<code class="descclassname">isomut2py.plot.</code><code class="descname">plot_hierarchical_clustering</code><span class="sig-paren">(</span><em>sample_names=None</em>, <em>mutations_dataframe=None</em>, <em>mutations_filename=None</em>, <em>output_dir=None</em>, <em>return_string=False</em>, <em>method='average'</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.plot.plot_hierarchical_clustering" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a heatmap based on the number of shared mutations found in all possible sample pairs.
+A dendrogram is also added that is the result of hierarchical clustering of the samples.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>mutations_dataframe</strong> – The dataframe containing the mutations. (default: None) (pandas.DataFrame)</li>
+<li><strong>sample_names</strong> – list of samples names to plot mutation counts for (default: None) (list of str)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+<li><strong>mutations_filename</strong> – The path to the file, where mutations are stored, if the mutations attribute of the object does not exist, its value will be set to the file defined here. (default: None) (str)</li>
+<li><strong>output_dir</strong> – the path to the directory where mutation tables are located (default: None) (str)</li>
+<li><strong>method</strong> – method used for seaborn hierarchical clustering (default: ‘average’) (“single”, “complete”, “average”, “weighted”, “median”, “ward”)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a base64 encoded string of the image. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="isomut2py.plot.plot_indel_spectrum">
+<code class="descclassname">isomut2py.plot.</code><code class="descname">plot_indel_spectrum</code><span class="sig-paren">(</span><em>spectrumDict</em>, <em>return_string=False</em>, <em>normalize_to_1=False</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.plot.plot_indel_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the indel spectrum, given a dictionary containing 83-element vectors as values.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>spectrumDict</strong> – a dictionary containing spectra as values and sample names as keys (dictionary)</li>
+<li><strong>normalize_to_1</strong> – If True, results are plotted as percentages, instead of counts. (default: False) (bool)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: True) (bool)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a base64 encoded string of the image. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="isomut2py.plot.plot_karyotype_for_all_chroms">
+<code class="descclassname">isomut2py.plot.</code><code class="descname">plot_karyotype_for_all_chroms</code><span class="sig-paren">(</span><em>chromosomes</em>, <em>output_dir</em>, <em>return_string=False</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.plot.plot_karyotype_for_all_chroms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots karyotype information (coverage, estimated ploidy, estimated LOH, reference base frequencies) about the sample for all analysed chromosomes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>chromosomes</strong> – the list of chromosomes to plot (list of str)</li>
+<li><strong>output_dir</strong> – the path to the directory where PE_fullchrom_[chrom].txt files are stored. (str)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: True) (bool)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a base64 encoded string of the image. Otherwise, nothing.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="isomut2py.plot.plot_karyotype_for_chrom">
+<code class="descclassname">isomut2py.plot.</code><code class="descname">plot_karyotype_for_chrom</code><span class="sig-paren">(</span><em>chrom</em>, <em>df</em>, <em>return_string=True</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.plot.plot_karyotype_for_chrom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots karyotype information (coverage, estimated ploidy, estimated LOH, reference base frequencies) about the sample for a given chromosome.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>chrom</strong> – The chromosome to plot. (str)</li>
+<li><strong>df</strong> – The dataframe containing ploidy and LOH information. (pandas.DataFrame)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: True) (bool)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a base64 encoded string of the image. Otherwise, a matplotlib figure.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="isomut2py.plot.plot_karyotype_summary">
+<code class="descclassname">isomut2py.plot.</code><code class="descname">plot_karyotype_summary</code><span class="sig-paren">(</span><em>haploid_coverage</em>, <em>chromosomes</em>, <em>chrom_length</em>, <em>output_dir</em>, <em>bed_filename</em>, <em>bed_file_sep='</em>, <em>'</em>, <em>binsize=1000000</em>, <em>overlap=50000</em>, <em>cov_min=5</em>, <em>cov_max=200</em>, <em>min_PL_length=3000000</em>, <em>chroms_with_text=None</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.plot.plot_karyotype_summary" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots karyotype summary for the whole genome with data preparation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>haploid_coverage</strong> – the average coverage of haploid regions (or the half of that of diploid regions)</li>
+<li><strong>chromosomes</strong> – list of chromosomes in the genome (list of str)</li>
+<li><strong>chrom_length</strong> – list of chromosome lengths (list of int)</li>
+<li><strong>output_dir</strong> – the path to the directory where PE_fullchrom_[chrom].txt files are located (str)</li>
+<li><strong>bed_filename</strong> – the path to the bed file of the sample with ploidy and LOH information (str)</li>
+<li><strong>bed_file_sep</strong> – bed file separator (default: ‘,’) (str)</li>
+<li><strong>binsize</strong> – the binsize used for moving average (default: 1000000) (int)</li>
+<li><strong>overlap</strong> – the overlap used for moving average (default: 50000) (int, smaller than binsize)</li>
+<li><strong>cov_min</strong> – the minimum coverage for a position to be included (default: 5) (int)</li>
+<li><strong>cov_max</strong> – the maximum coverage for a position to be included (default: 2000) (int)</li>
+<li><strong>min_PL_length</strong> – the minimal length of a region to be plotted (default: 3000000) (int)</li>
+<li><strong>chroms_with_text</strong> – the list of chromosomes to be indicated with text on the plot (list of str) (If there are many short chromosomes or they have long names, it is useful to only indicate a few with text on the plot.)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">a matplotlib figure</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="isomut2py.plot.plot_mutation_counts">
+<code class="descclassname">isomut2py.plot.</code><code class="descname">plot_mutation_counts</code><span class="sig-paren">(</span><em>sample_names=None</em>, <em>mutations_dataframe=None</em>, <em>unique_only=False</em>, <em>return_string=False</em>, <em>mutations_filename=None</em>, <em>output_dir=None</em>, <em>control_samples=None</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.plot.plot_mutation_counts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the number of mutations found in all the samples in different ploidy regions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>mutations_dataframe</strong> – The dataframe containing the mutations. (default: None) (pandas.DataFrame)</li>
+<li><strong>sample_names</strong> – list of samples names to plot mutation counts for (default: None) (list of str)</li>
+<li><strong>unique_only</strong> – If True, only unique mutations are plotted for each sample. (default: False) (boolean)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+<li><strong>mutations_filename</strong> – The path to the file, where mutations are stored, if the mutations attribute of the object does not exist, its value will be set to the file defined here. (default: None) (str)</li>
+<li><strong>output_dir</strong> – the path to the directory where mutation tables are located (default: None) (str)</li>
+<li><strong>control_samples</strong> – List of sample names that should be used as control samples in the sense, that no unique mutations are expected in them. (The sample names listed here must match a subset of the sample names listed in bam_filename.) (list of str)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a base64 encoded string of the image. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="function">
+<dt id="isomut2py.plot.plot_rainfall">
+<code class="descclassname">isomut2py.plot.</code><code class="descname">plot_rainfall</code><span class="sig-paren">(</span><em>mutations_dataframe, chromosomes=None, chrom_length=None, ref_fasta=None, sample_names=None, return_string=False, muttypes=['SNV', 'INS', 'DEL'], unique_only=True, plot_range=None</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.plot.plot_rainfall" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot a rainfall plot of the mutations. The horizontal axis is the genomic position of each mutation and the vertical axis is the genomic
+difference measured from the previous mutation.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>mutations_dataframe</strong> – the pandas.DataFrame containing all mutations (pandas.DataFrame)</li>
+<li><strong>chromosomes</strong> – a list of chromosomes to be plotted (default: None) (list of str)</li>
+<li><strong>chrom_length</strong> – a list of chrom lengths (default: None) (list of int)</li>
+<li><strong>ref_fasta</strong> – the path to the reference fasta file (default: None) (str)</li>
+<li><strong>sample_names</strong> – the list of sample names to be plotted (default: None) (str)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+<li><strong>muttypes</strong> – the list of mutation types to be plotted (default: [“SNV”, “INS”, “DEL”]) (any elements of the default list)</li>
+<li><strong>unique_only</strong> – If True, only unique mutations are plotted for each sample. (default: False) (boolean)</li>
+<li><strong>plot_range</strong> – the genomic range to be plotted (default: None, the whole genome is plotted) (str, example: “chr9:123134-143441414”)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a base64 encoded string of the image. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/logo_Large.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="index.html">isomut2py</a></h1>
+
+
+
+<p class="blurb">Comprehensive detection and analysis of genomic mutations from NGS sequencing data</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="use_cases.html">General use cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="external_mutations.html">Importing external mutations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PE_advanced.html">Advanced ploidy estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="postprocessing.html">Further analysis, visualization</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="code.html">API reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="code_mutation_calling.html">MutationCaller object</a></li>
+<li class="toctree-l2"><a class="reference internal" href="code_ploidy_estimation.html">PloidyEstimator object</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">Functions for plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="code_postprocessing_functions.html">Functions for postprocessing lists of mutations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="code_technical_functions.html">Technical (formatting, IO, etc.) functions</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="code.html">API reference</a><ul>
+      <li>Previous: <a href="code_ploidy_estimation.html" title="previous chapter">PloidyEstimator object</a></li>
+      <li>Next: <a href="code_postprocessing_functions.html" title="next chapter">Functions for postprocessing lists of mutations</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Orsolya Pipek.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/code_plotting_functions.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

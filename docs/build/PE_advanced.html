@@ -1,0 +1,1080 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Advanced ploidy estimation &#8212; isomut2py 2.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="shortcut icon" href="_static/icon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Further analysis, visualization" href="postprocessing.html" />
+    <link rel="prev" title="Importing external mutations" href="external_mutations.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  
+<style>
+/* CSS for nbsphinx extension */
+
+/* remove conflicting styling from Sphinx themes */
+div.nbinput,
+div.nbinput div.prompt,
+div.nbinput div.input_area,
+div.nbinput div[class*=highlight],
+div.nbinput div[class*=highlight] pre,
+div.nboutput,
+div.nbinput div.prompt,
+div.nbinput div.output_area,
+div.nboutput div[class*=highlight],
+div.nboutput div[class*=highlight] pre {
+    background: none;
+    border: none;
+    padding: 0 0;
+    margin: 0;
+    box-shadow: none;
+}
+
+/* avoid gaps between output lines */
+div.nboutput div[class*=highlight] pre {
+    line-height: normal;
+}
+
+/* input/output containers */
+div.nbinput,
+div.nboutput {
+    display: -webkit-flex;
+    display: flex;
+    align-items: flex-start;
+    margin: 0;
+    width: 100%;
+}
+@media (max-width: 540px) {
+    div.nbinput,
+    div.nboutput {
+        flex-direction: column;
+    }
+}
+
+/* input container */
+div.nbinput {
+    padding-top: 5px;
+}
+
+/* last container */
+div.nblast {
+    padding-bottom: 5px;
+}
+
+/* input prompt */
+div.nbinput div.prompt pre {
+    color: #303F9F;
+}
+
+/* output prompt */
+div.nboutput div.prompt pre {
+    color: #D84315;
+}
+
+/* all prompts */
+div.nbinput div.prompt,
+div.nboutput div.prompt {
+    min-width: 8ex;
+    padding-top: 0.4em;
+    padding-right: 0.4em;
+    text-align: right;
+    flex: 0;
+}
+@media (max-width: 540px) {
+    div.nbinput div.prompt,
+    div.nboutput div.prompt {
+        text-align: left;
+        padding: 0.4em;
+    }
+    div.nboutput div.prompt.empty {
+        padding: 0;
+    }
+}
+
+/* disable scrollbars on prompts */
+div.nbinput div.prompt pre,
+div.nboutput div.prompt pre {
+    overflow: hidden;
+}
+
+/* input/output area */
+div.nbinput div.input_area,
+div.nboutput div.output_area {
+    padding: 0.4em;
+    -webkit-flex: 1;
+    flex: 1;
+    overflow: auto;
+}
+@media (max-width: 540px) {
+    div.nbinput div.input_area,
+    div.nboutput div.output_area {
+        width: 100%;
+    }
+}
+
+/* input area */
+div.nbinput div.input_area {
+    border: 1px solid #cfcfcf;
+    border-radius: 2px;
+    background: #f7f7f7;
+}
+
+/* override MathJax center alignment in output cells */
+div.nboutput div[class*=MathJax] {
+    text-align: left !important;
+}
+
+/* override sphinx.ext.pngmath center alignment in output cells */
+div.nboutput div.math p {
+    text-align: left;
+}
+
+/* standard error */
+div.nboutput div.output_area.stderr {
+    background: #fdd;
+}
+
+/* ANSI colors */
+.ansi-black-fg { color: #3E424D; }
+.ansi-black-bg { background-color: #3E424D; }
+.ansi-black-intense-fg { color: #282C36; }
+.ansi-black-intense-bg { background-color: #282C36; }
+.ansi-red-fg { color: #E75C58; }
+.ansi-red-bg { background-color: #E75C58; }
+.ansi-red-intense-fg { color: #B22B31; }
+.ansi-red-intense-bg { background-color: #B22B31; }
+.ansi-green-fg { color: #00A250; }
+.ansi-green-bg { background-color: #00A250; }
+.ansi-green-intense-fg { color: #007427; }
+.ansi-green-intense-bg { background-color: #007427; }
+.ansi-yellow-fg { color: #DDB62B; }
+.ansi-yellow-bg { background-color: #DDB62B; }
+.ansi-yellow-intense-fg { color: #B27D12; }
+.ansi-yellow-intense-bg { background-color: #B27D12; }
+.ansi-blue-fg { color: #208FFB; }
+.ansi-blue-bg { background-color: #208FFB; }
+.ansi-blue-intense-fg { color: #0065CA; }
+.ansi-blue-intense-bg { background-color: #0065CA; }
+.ansi-magenta-fg { color: #D160C4; }
+.ansi-magenta-bg { background-color: #D160C4; }
+.ansi-magenta-intense-fg { color: #A03196; }
+.ansi-magenta-intense-bg { background-color: #A03196; }
+.ansi-cyan-fg { color: #60C6C8; }
+.ansi-cyan-bg { background-color: #60C6C8; }
+.ansi-cyan-intense-fg { color: #258F8F; }
+.ansi-cyan-intense-bg { background-color: #258F8F; }
+.ansi-white-fg { color: #C5C1B4; }
+.ansi-white-bg { background-color: #C5C1B4; }
+.ansi-white-intense-fg { color: #A1A6B2; }
+.ansi-white-intense-bg { background-color: #A1A6B2; }
+
+.ansi-default-inverse-fg { color: #FFFFFF; }
+.ansi-default-inverse-bg { background-color: #000000; }
+
+.ansi-bold { font-weight: bold; }
+.ansi-underline { text-decoration: underline; }
+</style>
+<div class="section" id="Advanced-ploidy-estimation">
+<h1>Advanced ploidy estimation<a class="headerlink" href="#Advanced-ploidy-estimation" title="Permalink to this headline">¶</a></h1>
+<p>For instructions on installation and basic exploration steps, see
+<a class="reference internal" href="getting_started.html"><span class="doc">Getting started</span></a>.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">isomut2py</span> <span class="k">as</span> <span class="nn">im2</span>
+<span class="o">%</span><span class="k">matplotlib</span> inline
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Compiling C scripts...
+Done.
+</pre></div></div>
+</div>
+<div class="section" id="Ploidy-estimation-from-scratch">
+<h2>Ploidy estimation from scratch<a class="headerlink" href="#Ploidy-estimation-from-scratch" title="Permalink to this headline">¶</a></h2>
+<p>For a complete tutorial on how to perform ploidy estimation from a
+single bam file, we will be using the raw example dataset, that can be
+downloaded with:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">im2</span><span class="o">.</span><span class="n">examples</span><span class="o">.</span><span class="n">download_raw_example_data</span><span class="p">(</span><span class="n">path</span><span class="o">=</span><span class="n">exampleRawDataDir</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Downloading file from URL &#34;http://genomics.hu/tools/isomut2py/isomut2py_raw_example_dataset.tar.gz&#34; to isomut2py_download_dir/isomut2py_raw_example_dataset.tar.gz
+File size: 528.5MiB
+Downloading might take a while...
+Download completed in 0 day(s), 2 hour(s), 49 min(s), 55 sec(s).
+----------------------------------------
+Extracting downloaded file to isomut2py_download_dir
+Extracting completed in 0 day(s), 0 hour(s), 0 min(s), 7 sec(s).
+</pre></div></div>
+</div>
+<p>And ploidy estimation settings can be loaded with:</p>
+<div class="admonition note">
+<strong>Note:</strong> Make sure to set the value of the <code class="docutils literal notranslate"><span class="pre">examplePEResultsDir</span></code> to a
+path where fairly large temporary files can be stored.</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">PEparam</span> <span class="o">=</span> <span class="n">im2</span><span class="o">.</span><span class="n">examples</span><span class="o">.</span><span class="n">load_example_ploidyest_settings</span><span class="p">(</span><span class="n">example_data_path</span><span class="o">=</span><span class="n">exampleRawDataDir</span><span class="p">,</span>
+                                                       <span class="n">output_dir</span><span class="o">=</span><span class="n">examplePEResultsDir</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>We can generate a PloidyEstimator object and run the ploidy estimation
+with:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">PEst</span> <span class="o">=</span> <span class="n">im2</span><span class="o">.</span><span class="n">ploidyestimation</span><span class="o">.</span><span class="n">PloidyEstimator</span><span class="p">(</span><span class="o">**</span><span class="n">PEparam</span><span class="p">)</span>
+<span class="n">PEst</span><span class="o">.</span><span class="n">run_ploidy_estimation</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+2018-12-05 14:37:11 - Ploidy estimation for file A.bam
+
+
+        2018-12-05 14:37:11 - Preparing for parallelization...
+                2018-12-05 14:37:11 - Defining parallel blocks ...
+                2018-12-05 14:37:11 - Done
+
+        2018-12-05 14:37:11 - (All output files will be written to isomut2py_results_dir/PE)
+
+        2018-12-05 14:37:11 - Generating temporary files, number of blocks to run: 107
+        2018-12-05 14:37:11 - Currently running:  1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107
+
+        2018-12-05 14:37:25 - Temporary files created, merging, cleaning up...
+
+        2018-12-05 14:37:25 - Estimating haploid coverage by fitting an infinite mixture model to the coverage distribution...
+
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="stderr output_area docutils container">
+<div class="highlight"><pre>
+WARNING (theano.gof.compilelock): Overriding existing lock by dead process &#39;4828&#39; (I am process &#39;28443&#39;)
+</pre></div></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+<span class="ansi-red-fg">---------------------------------------------------------------------------</span>
+<span class="ansi-red-fg">MaybeEncodingError</span>                        Traceback (most recent call last)
+<span class="ansi-green-fg">&lt;ipython-input-6-a04d8159031f&gt;</span> in <span class="ansi-cyan-fg">&lt;module&gt;</span><span class="ansi-blue-fg">()</span>
+<span class="ansi-green-intense-fg ansi-bold">      1</span> PEst <span class="ansi-blue-fg">=</span> im2<span class="ansi-blue-fg">.</span>ploidyestimation<span class="ansi-blue-fg">.</span>PloidyEstimator<span class="ansi-blue-fg">(</span><span class="ansi-blue-fg">**</span>PEparam<span class="ansi-blue-fg">)</span>
+<span class="ansi-green-fg">----&gt; 2</span><span class="ansi-red-fg"> </span>PEst<span class="ansi-blue-fg">.</span>run_ploidy_estimation<span class="ansi-blue-fg">(</span><span class="ansi-blue-fg">)</span>
+
+<span class="ansi-green-fg">~/.local/lib/python3.5/site-packages/isomut2py/ploidyestimation.py</span> in <span class="ansi-cyan-fg">run_ploidy_estimation</span><span class="ansi-blue-fg">(self, **kwargs)</span>
+<span class="ansi-green-intense-fg ansi-bold">    531</span>             print(&#39;\t&#39; * (level + 1) + time.strftime(&#34;%Y-%m-%d %H:%M:%S&#34;,
+<span class="ansi-green-intense-fg ansi-bold">    532</span>                                                      time.localtime()) + &#39; - Estimating haploid coverage by fitting an infinite mixture model to the coverage distribution...\n&#39;)
+<span class="ansi-green-fg">--&gt; 533</span><span class="ansi-red-fg">             </span>self<span class="ansi-blue-fg">.</span>estimate_hapcov_infmix<span class="ansi-blue-fg">(</span>level<span class="ansi-blue-fg">=</span>level <span class="ansi-blue-fg">+</span> <span class="ansi-cyan-fg">2</span><span class="ansi-blue-fg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">    534</span>             print(&#39;\t&#39; * (level + 2) + time.strftime(&#34;%Y-%m-%d %H:%M:%S&#34;,
+<span class="ansi-green-intense-fg ansi-bold">    535</span>                                                      time<span class="ansi-blue-fg">.</span>localtime<span class="ansi-blue-fg">(</span><span class="ansi-blue-fg">)</span><span class="ansi-blue-fg">)</span> <span class="ansi-blue-fg">+</span> <span class="ansi-blue-fg">&#39; - Raw estimate for the haploid coverage: &#39;</span> <span class="ansi-blue-fg">+</span> str<span class="ansi-blue-fg">(</span>
+
+<span class="ansi-green-fg">~/.local/lib/python3.5/site-packages/isomut2py/ploidyestimation.py</span> in <span class="ansi-cyan-fg">estimate_hapcov_infmix</span><span class="ansi-blue-fg">(self, level, **kwargs)</span>
+<span class="ansi-green-intense-fg ansi-bold">    260</span>                                                          chromosomes<span class="ansi-blue-fg">=</span>self<span class="ansi-blue-fg">.</span>chromosomes<span class="ansi-blue-fg">,</span>
+<span class="ansi-green-intense-fg ansi-bold">    261</span>                                                          output_dir<span class="ansi-blue-fg">=</span>self<span class="ansi-blue-fg">.</span>output_dir<span class="ansi-blue-fg">,</span>
+<span class="ansi-green-fg">--&gt; 262</span><span class="ansi-red-fg">                                                          cov_max=self.cov_max)
+</span><span class="ansi-green-intense-fg ansi-bold">    263</span>
+<span class="ansi-green-intense-fg ansi-bold">    264</span>         self<span class="ansi-blue-fg">.</span>estimated_hapcov <span class="ansi-blue-fg">=</span> hc
+
+<span class="ansi-green-fg">~/.local/lib/python3.5/site-packages/isomut2py/bayesian.py</span> in <span class="ansi-cyan-fg">estimate_hapcov_infmix</span><span class="ansi-blue-fg">(cov_min, hc_percentile, chromosomes, output_dir, cov_max, level, cov_sample, user_defined_hapcov)</span>
+<span class="ansi-green-intense-fg ansi-bold">     97</span>                                        number_of_chains_to_use<span class="ansi-blue-fg">=</span>number_of_chains<span class="ansi-blue-fg">,</span>
+<span class="ansi-green-intense-fg ansi-bold">     98</span>                                        number_of_iterations<span class="ansi-blue-fg">=</span>iterations<span class="ansi-blue-fg">,</span>
+<span class="ansi-green-fg">---&gt; 99</span><span class="ansi-red-fg">                                        burn_period=burn_beginning)
+</span><span class="ansi-green-intense-fg ansi-bold">    100</span>
+<span class="ansi-green-intense-fg ansi-bold">    101</span>     chains_to_use <span class="ansi-blue-fg">=</span> <span class="ansi-blue-fg">[</span>c <span class="ansi-green-fg">for</span> c <span class="ansi-green-fg">in</span> range<span class="ansi-blue-fg">(</span>number_of_chains<span class="ansi-blue-fg">)</span><span class="ansi-blue-fg">]</span>
+
+<span class="ansi-green-fg">~/.local/lib/python3.5/site-packages/isomut2py/bayesian.py</span> in <span class="ansi-cyan-fg">fit_infinite_mixture_model</span><span class="ansi-blue-fg">(coverage_dist, K, number_of_chains_to_use, number_of_iterations, burn_period)</span>
+<span class="ansi-green-intense-fg ansi-bold">     86</span>             tr = __pm.sample(draw=number_of_iterations-burn_period, tune=burn_period,
+<span class="ansi-green-intense-fg ansi-bold">     87</span>                              step<span class="ansi-blue-fg">=</span><span class="ansi-blue-fg">[</span>step1<span class="ansi-blue-fg">]</span><span class="ansi-blue-fg">,</span> njobs<span class="ansi-blue-fg">=</span>number_of_chains_to_use<span class="ansi-blue-fg">,</span>
+<span class="ansi-green-fg">---&gt; 88</span><span class="ansi-red-fg">                              progressbar=False, verbose=0, compute_convergence_checks=False)
+</span><span class="ansi-green-intense-fg ansi-bold">     89</span>
+<span class="ansi-green-intense-fg ansi-bold">     90</span>         <span class="ansi-red-fg"># trace = tr[burn_period:]</span>
+
+<span class="ansi-green-fg">~/.local/lib/python3.5/site-packages/pymc3/sampling.py</span> in <span class="ansi-cyan-fg">sample</span><span class="ansi-blue-fg">(draws, step, init, n_init, start, trace, chain, njobs, tune, nuts_kwargs, step_kwargs, progressbar, model, random_seed, live_plot, discard_tuned_samples, live_plot_kwargs, **kwargs)</span>
+<span class="ansi-green-intense-fg ansi-bold">    274</span>     discard <span class="ansi-blue-fg">=</span> tune <span class="ansi-green-fg">if</span> discard_tuned_samples <span class="ansi-green-fg">else</span> <span class="ansi-cyan-fg">0</span>
+<span class="ansi-green-intense-fg ansi-bold">    275</span>
+<span class="ansi-green-fg">--&gt; 276</span><span class="ansi-red-fg">     </span><span class="ansi-green-fg">return</span> sample_func<span class="ansi-blue-fg">(</span><span class="ansi-blue-fg">**</span>sample_args<span class="ansi-blue-fg">)</span><span class="ansi-blue-fg">[</span>discard<span class="ansi-blue-fg">:</span><span class="ansi-blue-fg">]</span>
+<span class="ansi-green-intense-fg ansi-bold">    277</span>
+<span class="ansi-green-intense-fg ansi-bold">    278</span>
+
+<span class="ansi-green-fg">~/.local/lib/python3.5/site-packages/pymc3/sampling.py</span> in <span class="ansi-cyan-fg">_mp_sample</span><span class="ansi-blue-fg">(**kwargs)</span>
+<span class="ansi-green-intense-fg ansi-bold">    460</span>                                                      random_seed<span class="ansi-blue-fg">=</span>rseed<span class="ansi-blue-fg">[</span>i<span class="ansi-blue-fg">]</span><span class="ansi-blue-fg">,</span>
+<span class="ansi-green-intense-fg ansi-bold">    461</span>                                                      start<span class="ansi-blue-fg">=</span>start_vals<span class="ansi-blue-fg">[</span>i<span class="ansi-blue-fg">]</span><span class="ansi-blue-fg">,</span>
+<span class="ansi-green-fg">--&gt; 462</span><span class="ansi-red-fg">                                                      **kwargs) for i in range(njobs))
+</span><span class="ansi-green-intense-fg ansi-bold">    463</span>     <span class="ansi-green-fg">return</span> merge_traces<span class="ansi-blue-fg">(</span>traces<span class="ansi-blue-fg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">    464</span>
+
+<span class="ansi-green-fg">~/.local/lib/python3.5/site-packages/joblib/parallel.py</span> in <span class="ansi-cyan-fg">__call__</span><span class="ansi-blue-fg">(self, iterable)</span>
+<span class="ansi-green-intense-fg ansi-bold">    787</span>                 <span class="ansi-red-fg"># consumption.</span>
+<span class="ansi-green-intense-fg ansi-bold">    788</span>                 self<span class="ansi-blue-fg">.</span>_iterating <span class="ansi-blue-fg">=</span> <span class="ansi-green-fg">False</span>
+<span class="ansi-green-fg">--&gt; 789</span><span class="ansi-red-fg">             </span>self<span class="ansi-blue-fg">.</span>retrieve<span class="ansi-blue-fg">(</span><span class="ansi-blue-fg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">    790</span>             <span class="ansi-red-fg"># Make sure that we get a last message telling us we are done</span>
+<span class="ansi-green-intense-fg ansi-bold">    791</span>             elapsed_time <span class="ansi-blue-fg">=</span> time<span class="ansi-blue-fg">.</span>time<span class="ansi-blue-fg">(</span><span class="ansi-blue-fg">)</span> <span class="ansi-blue-fg">-</span> self<span class="ansi-blue-fg">.</span>_start_time
+
+<span class="ansi-green-fg">~/.local/lib/python3.5/site-packages/joblib/parallel.py</span> in <span class="ansi-cyan-fg">retrieve</span><span class="ansi-blue-fg">(self)</span>
+<span class="ansi-green-intense-fg ansi-bold">    697</span>             <span class="ansi-green-fg">try</span><span class="ansi-blue-fg">:</span>
+<span class="ansi-green-intense-fg ansi-bold">    698</span>                 <span class="ansi-green-fg">if</span> getattr<span class="ansi-blue-fg">(</span>self<span class="ansi-blue-fg">.</span>_backend<span class="ansi-blue-fg">,</span> <span class="ansi-blue-fg">&#39;supports_timeout&#39;</span><span class="ansi-blue-fg">,</span> <span class="ansi-green-fg">False</span><span class="ansi-blue-fg">)</span><span class="ansi-blue-fg">:</span>
+<span class="ansi-green-fg">--&gt; 699</span><span class="ansi-red-fg">                     </span>self<span class="ansi-blue-fg">.</span>_output<span class="ansi-blue-fg">.</span>extend<span class="ansi-blue-fg">(</span>job<span class="ansi-blue-fg">.</span>get<span class="ansi-blue-fg">(</span>timeout<span class="ansi-blue-fg">=</span>self<span class="ansi-blue-fg">.</span>timeout<span class="ansi-blue-fg">)</span><span class="ansi-blue-fg">)</span>
+<span class="ansi-green-intense-fg ansi-bold">    700</span>                 <span class="ansi-green-fg">else</span><span class="ansi-blue-fg">:</span>
+<span class="ansi-green-intense-fg ansi-bold">    701</span>                     self<span class="ansi-blue-fg">.</span>_output<span class="ansi-blue-fg">.</span>extend<span class="ansi-blue-fg">(</span>job<span class="ansi-blue-fg">.</span>get<span class="ansi-blue-fg">(</span><span class="ansi-blue-fg">)</span><span class="ansi-blue-fg">)</span>
+
+<span class="ansi-green-fg">/usr/lib/python3.5/multiprocessing/pool.py</span> in <span class="ansi-cyan-fg">get</span><span class="ansi-blue-fg">(self, timeout)</span>
+<span class="ansi-green-intense-fg ansi-bold">    606</span>             <span class="ansi-green-fg">return</span> self<span class="ansi-blue-fg">.</span>_value
+<span class="ansi-green-intense-fg ansi-bold">    607</span>         <span class="ansi-green-fg">else</span><span class="ansi-blue-fg">:</span>
+<span class="ansi-green-fg">--&gt; 608</span><span class="ansi-red-fg">             </span><span class="ansi-green-fg">raise</span> self<span class="ansi-blue-fg">.</span>_value
+<span class="ansi-green-intense-fg ansi-bold">    609</span>
+<span class="ansi-green-intense-fg ansi-bold">    610</span>     <span class="ansi-green-fg">def</span> _set<span class="ansi-blue-fg">(</span>self<span class="ansi-blue-fg">,</span> i<span class="ansi-blue-fg">,</span> obj<span class="ansi-blue-fg">)</span><span class="ansi-blue-fg">:</span>
+
+<span class="ansi-red-fg">MaybeEncodingError</span>: Error sending result: &#39;[&lt;MultiTrace: 1 chains, 10500 iterations, 10 variables&gt;]&#39;. Reason: &#39;MemoryError()&#39;
+</pre></div></div>
+</div>
+<p>The ploidy estimation pipeline consists of the following main steps:</p>
+<ol class="arabic simple">
+<li>A temporary pileup file is generated from the original bam file which
+is scanned with a moving average method to determine the reference
+allele frequency and the local average coverage for a set of
+investigated positions. This is performed in a highly parallelized
+manner, on short regions of the genome. Information collected for the
+genomic positions are temporarily saved to a set of intermediate
+files (one for each chromosome).</li>
+<li>The average coverage of the haploid regions is estimated. This is
+achieved by fitting a many-component (20) Gaussian mixture model 10
+times to the coverage distribution determined from the intermediate
+files. Using specific statistics of the parameters of the fitted
+distributions, an estimate for the haploid coverage is obtained. This
+whole step can be completely skipped by supplying an estimate value
+in the <code class="docutils literal notranslate"><span class="pre">user_defined_hapcov</span></code> attribute of the PloidyEstimator
+object. (If one has a reasonable idea about the haploid coverage (for
+example by checking sequencing results with a genome viewer), it is
+generally a good idea to set the <code class="docutils literal notranslate"><span class="pre">user_defined_hapcov</span></code> to this
+value to save time. For a strictly non-haploid genome, the haploid
+coverage is defined as the half of the diploid, the third of the
+triploid, etc. coverages.)</li>
+<li>A seven component Gaussian mixture model is fitted to the coverage
+distribution with equidistant centers. The estimated (or
+user-defined) haploid coverage and its products with whole numbers
+are used as prior for the centers of the components, allowing the
+identification of seven distinct ploidies.</li>
+<li>The seven component fitted distribution is used as prior to determine
+the ploidy of each genomic position in the intermediate files.</li>
+</ol>
+<p>Thus the actual ploidy estimation largely depends on how accurately the
+seven component model fits the raw coverage distribution. It is good
+practice to check this by plotting them both on the same figure with:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">f</span> <span class="o">=</span> <span class="n">PEst</span><span class="o">.</span><span class="n">plot_coverage_distribution</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_11_0.png" src="_images/PE_advanced_11_0.png" />
+</div>
+</div>
+<p>Given that the currently investigated sample is an almost fully haploid
+genome, having a single peak on the figure for the “Ploidy 1” curve is
+promising. However, the center of this curve is slightly shifted to the
+right.</p>
+<p>If you are unhappy with the fit, estimate the haploid coverage manually,
+and try refitting the seven component model with:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">PEst</span><span class="o">.</span><span class="n">fit_gaussians</span><span class="p">(</span><span class="n">estimated_hapcov</span> <span class="o">=</span> <span class="mi">25</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">f</span> <span class="o">=</span> <span class="n">PEst</span><span class="o">.</span><span class="n">plot_coverage_distribution</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_14_0.png" src="_images/PE_advanced_14_0.png" />
+</div>
+</div>
+<p>Naturally, you will need to rerun the final step of the ploidy
+estimation with the improved fit:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [10]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">PEst</span><span class="o">.</span><span class="n">PE_on_whole_genome</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+I II III IV V VI VII VIII IX X XI XII XIII XIV XV XVI
+</pre></div></div>
+</div>
+</div>
+<div class="section" id="Visualizing-karyotypes">
+<h2>Visualizing karyotypes<a class="headerlink" href="#Visualizing-karyotypes" title="Permalink to this headline">¶</a></h2>
+<p>To plot the results of ploidy estimation, isomut2py provides two
+function. A fairly concise summary of the results can be plotted with:</p>
+<div class="admonition note">
+<strong>Note:</strong> The default values of <code class="docutils literal notranslate"><span class="pre">binsize</span></code>, <code class="docutils literal notranslate"><span class="pre">overlap</span></code> and
+<code class="docutils literal notranslate"><span class="pre">min_PL_length</span></code> are set to accomodate the plotting of large (human)
+genomes, thus for our current case, they should be adjusted to allow for
+a more easily interpretable figure. The value of <code class="docutils literal notranslate"><span class="pre">overlap</span></code> must always
+be smaller than <code class="docutils literal notranslate"><span class="pre">binsize</span></code>. These are used as shift- and windowsizes
+(respectively) for a moving average method that condenses the data to
+plottable points. The smaller their values are, the more points will
+appear on the figure, but the longer it will take to plot. Similary,
+<code class="docutils literal notranslate"><span class="pre">min_PL_length</span></code> controls the minimal length of a region with an unique
+ploidy to be plotted on the graph.</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [11]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">f</span> <span class="o">=</span> <span class="n">PEst</span><span class="o">.</span><span class="n">plot_karyotype_summary</span><span class="p">(</span><span class="n">binsize</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">overlap</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">min_PL_length</span><span class="o">=</span><span class="mi">300</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_18_0.png" src="_images/PE_advanced_18_0.png" />
+</div>
+</div>
+<p>A more detailed plot of individual chromosomes can be generated with:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [12]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">f</span> <span class="o">=</span> <span class="n">PEst</span><span class="o">.</span><span class="n">plot_karyotype_for_all_chroms</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_0.png" src="_images/PE_advanced_20_0.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_1.png" src="_images/PE_advanced_20_1.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_2.png" src="_images/PE_advanced_20_2.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_3.png" src="_images/PE_advanced_20_3.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_4.png" src="_images/PE_advanced_20_4.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_5.png" src="_images/PE_advanced_20_5.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_6.png" src="_images/PE_advanced_20_6.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_7.png" src="_images/PE_advanced_20_7.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_8.png" src="_images/PE_advanced_20_8.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_9.png" src="_images/PE_advanced_20_9.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_10.png" src="_images/PE_advanced_20_10.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_11.png" src="_images/PE_advanced_20_11.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_12.png" src="_images/PE_advanced_20_12.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_13.png" src="_images/PE_advanced_20_13.png" />
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_14.png" src="_images/PE_advanced_20_14.png" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_20_15.png" src="_images/PE_advanced_20_15.png" />
+</div>
+</div>
+</div>
+<div class="section" id="Comparing-samples">
+<h2>Comparing samples<a class="headerlink" href="#Comparing-samples" title="Permalink to this headline">¶</a></h2>
+<p>A naive karyotype comparison of the samples is incorporated in
+isomut2py. However, we suggest using this option more as an exploratory
+step rather than a chosen tool for the accurate detection of copy number
+variations.</p>
+<p>As a necessary first step, the ploidy estimation for another sample has
+to be performed. This can be easily achieved by slightly modifying the
+code used above:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">PEparam_2</span> <span class="o">=</span> <span class="n">im2</span><span class="o">.</span><span class="n">examples</span><span class="o">.</span><span class="n">load_example_ploidyest_settings</span><span class="p">(</span><span class="n">example_data_path</span><span class="o">=</span><span class="n">exampleRawDataDir</span><span class="p">,</span>
+                                                       <span class="n">output_dir</span><span class="o">=</span><span class="n">examplePEResultsDir_2</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">PEst_2</span> <span class="o">=</span> <span class="n">im2</span><span class="o">.</span><span class="n">ploidyestimation</span><span class="o">.</span><span class="n">PloidyEstimator</span><span class="p">(</span><span class="o">**</span><span class="n">PEparam_2</span><span class="p">)</span>
+<span class="n">PEst_2</span><span class="o">.</span><span class="n">bam_filename</span> <span class="o">=</span> <span class="s1">&#39;B.bam&#39;</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">PEst_2</span><span class="o">.</span><span class="n">run_ploidy_estimation</span><span class="p">(</span><span class="n">user_defined_hapcov</span><span class="o">=</span><span class="mi">25</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+2018-11-15 14:35:37 - Ploidy estimation for file B.bam
+
+
+        2018-11-15 14:35:37 - Preparing for parallelization...
+                2018-11-15 14:35:37 - Defining parallel blocks ...
+                2018-11-15 14:35:37 - Done
+
+        2018-11-15 14:35:37 - (All output files will be written to ../Documents/isomut2py_example_data/PE_example_results_20181114_B)
+
+        2018-11-15 14:35:37 - Generating temporary files, number of blocks to run: 107
+        2018-11-15 14:35:37 - Currently running:  1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35 36 37 38 39 40 41 42 43 44 45 46 47 48 49 50 51 52 53 54 55 56 57 58 59 60 61 62 63 64 65 66 67 68 69 70 71 72 73 74 75 76 77 78 79 80 81 82 83 84 85 86 87 88 89 90 91 92 93 94 95 96 97 98 99 100 101 102 103 104 105 106 107
+
+        2018-11-15 14:36:06 - Temporary files created, merging, cleaning up...
+
+        2018-11-15 14:36:06 - Collecting data for coverage distribution, using user-defined haploid coverage (25)...
+
+        2018-11-15 14:36:06 - Fitting equidistant Gaussians to the coverage distribution using the raw haploid coverage as prior...
+
+                2018-11-15 14:43:14 - Parameters of the distribution are saved to: ../Documents/isomut2py_example_data/PE_example_results_20181114_B/GaussDistParams.pkl
+
+                2018-11-15 14:43:14 - Final estimate for the haploid coverage: 29.99889722813764
+
+        2018-11-15 14:43:14 - Estimating local ploidy using the previously determined Gaussians as priors on chromosomes:  I II III IV V VI VII VIII IX X XI XII XIII XIV XV XVI
+
+        2018-11-15 14:47:40 - Generating final bed file...
+
+
+        2018-11-15 14:47:41 - Generating HTML report...
+
+
+2018-11-15 14:48:13 - Ploidy estimation finished. (0 day(s), 0 hour(s), 12 min(s), 35 sec(s).)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">f</span> <span class="o">=</span> <span class="n">PEst_2</span><span class="o">.</span><span class="n">plot_coverage_distribution</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_26_0.png" src="_images/PE_advanced_26_0.png" />
+</div>
+</div>
+<p>Now the comparison can be done in a single step with:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [13]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">PEst</span><span class="o">.</span><span class="n">compare_with_other</span><span class="p">(</span><span class="n">PEst_2</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+2018-11-15 14:56:17 - Comparing regions of different ploidies in detail
+
+        2018-11-15 14:56:17 - Number of intervals to check: 2
+
+                2018-11-15 14:56:17 - Currently running: 1 2
+
+        2018-11-15 14:56:17 - Differing genomic intervals with quality scores saved to file ../Documents/isomut2py_example_data/PE_example_results_20181114A_VS_B_COMP.bed
+
+
+2018-11-15 14:56:17 - Comparison finished.
+</pre></div></div>
+</div>
+<p>The comparison results stored in the above file can be checked with:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [17]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="o">!</span>cat ../Documents/isomut2py_example_data/PE_example_results_20181114/A_VS_B_COMP.bed
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+chrom   intStart        intEnd  ploidy1 ploidy2 LOH1    LOH2    intLength       quality
+VII     289734  291768  1       3       0       0       2034    619987021.8068602
+XII     1072935 1075050 2       1       0       0       2115    0.8403883817503438
+</pre></div></div>
+</div>
+</div>
+<div class="section" id="Correcting-bad-fits,-loading-fitted-coverage-distributions">
+<h2>Correcting bad fits, loading fitted coverage distributions<a class="headerlink" href="#Correcting-bad-fits,-loading-fitted-coverage-distributions" title="Permalink to this headline">¶</a></h2>
+<p>As the distribution fitting is the most time consuming part of the
+ploidy estimation, it can be useful to load an already fitted
+distribution that we can work with. The above used ploidy estimation
+pipeline automatically saves the parameters of the fitted distribution
+to a file in the output directory, so these can be easily reused.</p>
+<p>As an example, we will be using the already prepared files in the
+example dataset. (For download instructions, see <a class="reference internal" href="getting_started.html"><span class="doc">Getting
+started</span></a>.)</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">PEparam_3</span> <span class="o">=</span> <span class="n">im2</span><span class="o">.</span><span class="n">examples</span><span class="o">.</span><span class="n">load_preprocessed_example_ploidyest_settings</span><span class="p">(</span><span class="n">example_data_path</span><span class="o">=</span><span class="n">exampleDataDir</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [4]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">PEst_3</span> <span class="o">=</span> <span class="n">im2</span><span class="o">.</span><span class="n">ploidyestimation</span><span class="o">.</span><span class="n">PloidyEstimator</span><span class="p">(</span><span class="o">**</span><span class="n">PEparam_3</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">PEst_3</span><span class="o">.</span><span class="n">load_cov_distribution_parameters_from_file</span><span class="p">(</span><span class="n">PEst_3</span><span class="o">.</span><span class="n">output_dir</span> <span class="o">+</span> <span class="s1">&#39;GaussDistParams_incorrect.pkl&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [7]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">f</span> <span class="o">=</span> <span class="n">PEst_3</span><span class="o">.</span><span class="n">plot_coverage_distribution</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_36_0.png" src="_images/PE_advanced_36_0.png" />
+</div>
+</div>
+<p>This is obviously a highly incorrect fit for this data. In cases like
+this, the above described procedure can be followed: the haploid
+coverage should be estimated manually (essentially by looking at the
+position of the first peak of the above histogram), and the fitting
+rerun with this user-defined value:</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">PEst_3</span><span class="o">.</span><span class="n">fit_gaussians</span><span class="p">(</span><span class="n">estimated_hapcov</span> <span class="o">=</span> <span class="mi">11</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [32]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">f</span> <span class="o">=</span> <span class="n">PEst_3</span><span class="o">.</span><span class="n">plot_coverage_distribution</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_39_0.png" src="_images/PE_advanced_39_0.png" />
+</div>
+</div>
+<p>And finally, ploidy estimation can be rerun with the now correct prior
+distribution with:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [6]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">PEst_3</span><span class="o">.</span><span class="n">PE_on_whole_genome</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 21 22 X Y
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">f</span> <span class="o">=</span> <span class="n">PEst_3</span><span class="o">.</span><span class="n">plot_karyotype_summary</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="_images/PE_advanced_42_0.png" src="_images/PE_advanced_42_0.png" />
+</div>
+</div>
+</div>
+<div class="section" id="Using-estimated-ploidies-as-input-for-mutation-detection">
+<h2>Using estimated ploidies as input for mutation detection<a class="headerlink" href="#Using-estimated-ploidies-as-input-for-mutation-detection" title="Permalink to this headline">¶</a></h2>
+<p>Once the ploidy estimation has been performed as described, we can use
+this information to fine-tune mutation detection. Mutation calling is
+run on diploid genomes by default, however, when analysing non-diploid
+genomes or genomes with largely varying ploidies (as shown above), it
+can be useful to determine the ploidy more precisely. (This is important
+because the alternate allele frequency in mutated positions largely
+depends on the local ploidy.)</p>
+<p>If the analysed organism (all of the samples in the sample set) has a
+constant ploidy different from 2 (for example, a fully haploid genome),
+its value can be simply set with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mutDet</span> <span class="o">=</span> <span class="n">im2</span><span class="o">.</span><span class="n">mutationcalling</span><span class="o">.</span><span class="n">MutationCaller</span><span class="p">()</span>
+<span class="n">mutDet</span><span class="o">.</span><span class="n">constant_ploidy</span> <span class="o">=</span> <span class="mi">1</span>
+</pre></div>
+</div>
+<p>(For basic mutation calling, see <a class="reference internal" href="getting_started.html"><span class="doc">Getting
+started</span></a>.)</p>
+<p>However, in cases when some of the analysed samples have varying ploidy
+along the length of the genome (for example, aneuploid cell lines), the
+local ploidy can be uniquely defined for each sample and each genomic
+position in a bed file.</p>
+<p>As a best practice, we suggest performing the above ploidy estimation on
+the starting clones in a sample set. This creates a separate ploidy bed
+file for each sample group derived from the starting clones. These can
+be assigned to specific samples with (make sure to provide valid paths
+to the bed files):</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [8]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="n">im2</span><span class="o">.</span><span class="n">format</span><span class="o">.</span><span class="n">generate_ploidy_info_file</span><span class="p">(</span><span class="n">sample_groups</span><span class="o">=</span><span class="p">[[</span><span class="s1">&#39;S1.bam&#39;</span><span class="p">,</span> <span class="s1">&#39;S2.bam&#39;</span><span class="p">,</span> <span class="s1">&#39;S3.bam&#39;</span><span class="p">],</span>
+                                                    <span class="p">[</span><span class="s1">&#39;S4.bam&#39;</span><span class="p">,</span> <span class="s1">&#39;S5.bam&#39;</span><span class="p">,</span> <span class="s1">&#39;S6.bam&#39;</span><span class="p">,</span> <span class="s1">&#39;S7.bam&#39;</span><span class="p">]],</span>
+                                     <span class="n">group_bed_filepaths</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;path_to_S1_ploidy.bed&#39;</span><span class="p">,</span> <span class="s1">&#39;path_to_S4_ploidy.bed&#39;</span><span class="p">],</span>
+                                     <span class="n">filename</span><span class="o">=</span><span class="s1">&#39;ploidy_info_file_for_test_set.txt&#39;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>The above function generates a ploidy info file to the path specified by
+<code class="docutils literal notranslate"><span class="pre">filename</span></code>:</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre>
+<span></span>In [9]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython3 notranslate"><div class="highlight"><pre>
+<span></span><span class="o">!</span>cat ploidy_info_file_for_test_set.txt
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+#file_path      sample_names_list
+path_to_S1_ploidy.bed_im2format S1.bam, S2.bam, S3.bam
+path_to_S4_ploidy.bed_im2format S4.bam, S5.bam, S6.bam, S7.bam
+</pre></div></div>
+</div>
+<p>Now this file can be supplied to the mutation detection object with:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">mutDet</span><span class="o">.</span><span class="n">ploidy_info_file</span> <span class="o">=</span> <span class="s2">&quot;ploidy_info_file_for_test_set.txt&quot;</span>
+</pre></div>
+</div>
+<p>(Make sure to set the complete path to the file.)</p>
+<p>For all samples in the dataset that are not included in the ploidy info
+file, the constant ploidy set with the <code class="docutils literal notranslate"><span class="pre">constant_ploidy</span></code> attribute
+will be used (default: 2). This is also true for any genomic regions
+that were not specified in the bed files.</p>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/logo_Large.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="index.html">isomut2py</a></h1>
+
+
+
+<p class="blurb">Comprehensive detection and analysis of genomic mutations from NGS sequencing data</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="use_cases.html">General use cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="external_mutations.html">Importing external mutations</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Advanced ploidy estimation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#Ploidy-estimation-from-scratch">Ploidy estimation from scratch</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Visualizing-karyotypes">Visualizing karyotypes</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Comparing-samples">Comparing samples</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Correcting-bad-fits,-loading-fitted-coverage-distributions">Correcting bad fits, loading fitted coverage distributions</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Using-estimated-ploidies-as-input-for-mutation-detection">Using estimated ploidies as input for mutation detection</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="postprocessing.html">Further analysis, visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code.html">API reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="external_mutations.html" title="previous chapter">Importing external mutations</a></li>
+      <li>Next: <a href="postprocessing.html" title="next chapter">Further analysis, visualization</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Orsolya Pipek.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/PE_advanced.ipynb.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

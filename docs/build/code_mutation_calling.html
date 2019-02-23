@@ -1,0 +1,721 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>MutationCaller object &#8212; isomut2py 2.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="shortcut icon" href="_static/icon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="PloidyEstimator object" href="code_ploidy_estimation.html" />
+    <link rel="prev" title="API reference" href="code.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-isomut2py.mutationcalling">
+<span id="mutationcaller-object"></span><h1>MutationCaller object<a class="headerlink" href="#module-isomut2py.mutationcalling" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="isomut2py.mutationcalling.MutationCaller">
+<em class="property">class </em><code class="descclassname">isomut2py.mutationcalling.</code><code class="descname">MutationCaller</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller" title="Permalink to this definition">¶</a></dt>
+<dd><p>The MutationCaller class is designed to keep all parameter values, directories and filepaths in one place that are needed for the mutation
+detection and postprocessing of a single or multiple sample(s).</p>
+<ul class="simple">
+<li><dl class="first docutils">
+<dt>List of basic parameters:</dt>
+<dd><ul class="first last">
+<li>ref_fasta: The path to the fasta file of the reference genome. (str)</li>
+<li>output_dir: The path to a directory that can be used for temporary files and output files. The user must have permission to write the directory. (str)</li>
+<li>input_dir: The path to the directory, where the bam file(s) of the sample(s) is/are located. (str)</li>
+<li>bam_filename: A list of the name(s) of the bam file(s) of the sample(s). (Without path, eg. [“sample_1.bam”, “sample_2.bam”, “sample_3.bam”, …].) (list of str)</li>
+<li>samtools_fullpath: The path to samtools on the computer. (default: “samtools”) (str)</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Other parameters with default values:</dt>
+<dd><ul class="first last">
+<li>n_min_block: The approximate number of blocks to partition the analysed genome to for parallel computing. The actual number might be slightly larger that this. (default: 200) (int)</li>
+<li>n_conc_blocks: The number of blocks to process at the same time. (default: 4) (int)</li>
+<li>chromosomes: The list of chromosomes to analyse. (default: all chromosomes included included in the reference genome specified in ref_fasta) (list of str)</li>
+<li>base_quality_limit: The base quality limit used by samtools in order to decide if a base should be included in the pileup file. (default: 30) (int)</li>
+<li>samtools_flags: The samtools flags to be used for pileup file generation. (default: ” -B -d 1000 “) (str)</li>
+<li>unique_mutations_only: If True, only those mutations are sought that are unique to specific samples. Setting it to False greatly increases computation time, but allows for the detection of shared mutations and thus the analysis of phylogenetic connections between samples. If True, print_shared_by_all is ignored. (default: True) (boolean)</li>
+<li>print_shared_by_all: If False, mutations that are present in all analysed samples are not printed to the output files. This decreases both memory usage and computation time. (default: False) (boolean)</li>
+<li>min_sample_freq: The minimum frequency of the mutated base at a given position in the mutated sample(s). (default: 0.21) (float)</li>
+<li>min_other_ref_freq: The minimum frequency of the reference base at a given position in the non-mutated sample(s). (default: 0.95) (float)</li>
+<li>cov_limit: The minimum coverage at a given position in the mutated sample(s). (default: 5) (float)</li>
+<li>min_gap_dist_snv: Minimum genomic distance from an identified SNV for a position to be considered as a potential mutation. (default: 0) (int)</li>
+<li>min_gap_dist_indel: Minimum genomic distance from an identified indel for a position to be considered as a potential mutation. (default: 20) (int)</li>
+<li>use_local_realignment: By default, mutation detection is run only once, with the samtools mpileup command with option -B. This turns off the probabilistic realignment of reads while creating the temporary pileup file, which might result in false positives due to alignment error. To filter out these mutations, setting the above parameter to True runs the whole mutation detection pipeline again for possibly mutated positions without the -B option as well, and only those mutations are kept that are still present with the probabilistic realignment turned on. Setting use_local_realignment = True increases runtime. (default: False) (boolean)</li>
+<li>ploidy_info_filepath: Path to the file containing ploidy information (see below for details) of the samples. (default: None) (str)</li>
+<li>constant_ploidy: The default ploidy to be used in regions not contained in ploidy_info_filepath. (default: 2) (int)</li>
+<li>bedfile: Path to a bedfile containing a list of genomic regions, if mutations are only sought in a limited part of the genome. (default: None) (str)</li>
+<li>control_samples: list of the bam filenames of the control samples. Control samples are not expected to have any unique mutations, thus they can be used to optimize the results. (default: None) (array-like)</li>
+<li>FPs_per_genome: the maximum number of false positive mutations allowed in a control sample (default: None) (int)</li>
+<li>mutations: a pandas DataFrame of mutations found in the sample set (default: None) (pandas.DataFrame)</li>
+<li>chrom_length: the length of chromosomes (default: not set) (array-like)</li>
+<li>genome_length: the total length of the genome (default: not set) (int)</li>
+<li>IDspectra: a dictionary containing the indel spectra of all the samples in the dataset (default: not set) (dict with keys=bam_filename and values=array-like)</li>
+<li>DNVspectra: a dictionary containing the dinucleotide variation spectra of all the samples in the dataset (default: not set) (dict with keys=bam_filename and values=array-like)</li>
+<li>SNVspectra: a dictionary containing the single nucleotide variation spectra of all the samples in the dataset (default: not set) (dict with keys=bam_filename and values=array-like)</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.calculate_DNV_matrix">
+<code class="descname">calculate_DNV_matrix</code><span class="sig-paren">(</span><em>unique_only=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.calculate_DNV_matrix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the dinucleotide variation spectrum in matrix format from the dataframe of relevant mutations, using the fasta file of the
+reference genome. Results are stored in the DNVmatrice attribute of the object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>unique_only</strong> – If True, only unique mutations are plotted for each sample. (default: True) (boolean)</li>
+<li><strong>kwargs</strong> – <p>keyword arguments for MutationCaller attributes</p>
+<ul>
+<li>mutations_dataframe: A pandas DataFrame where mutations are listed. (default: not set) (pandas.DataFrame)</li>
+<li>sample_names: A list of sample names to plot results for, a subset of the list in “bam_filename” attribute. (default: not set) (list)</li>
+<li>mutations_filaname: the path to the file where mutations are stored (default: not set) (str)</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.calculate_DNV_spectrum">
+<code class="descname">calculate_DNV_spectrum</code><span class="sig-paren">(</span><em>unique_only=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.calculate_DNV_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the dinucleotide variation spectrum from the dataframe of relevant mutations, using the fasta file of the reference genome.
+Results are stored in the DNVmatrice attribute of the object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>unique_only</strong> – If True, only unique mutations are plotted for each sample. (default: True) (boolean)</li>
+<li><strong>kwargs</strong> – <p>keyword arguments for MutationCaller attributes</p>
+<ul>
+<li>mutations_dataframe: A pandas DataFrame where mutations are listed. (default: not set) (pandas.DataFrame)</li>
+<li>sample_names: A list of sample names to plot results for, a subset of the list in “bam_filename” attribute. (default: not set) (list)</li>
+<li>mutations_filaname: the path to the file where mutations are stored (default: not set) (str)</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.calculate_SNV_spectrum">
+<code class="descname">calculate_SNV_spectrum</code><span class="sig-paren">(</span><em>unique_only=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.calculate_SNV_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the triplet spectrum from the dataframe of relevant mutations, using the fasta file of the reference genome. Results are stored
+in the SNVspectra attribute of the object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>unique_only</strong> – If True, only unique mutations are plotted for each sample. (default: True) (boolean)</li>
+<li><strong>kwargs</strong> – <p>keyword arguments for MutationCaller attributes</p>
+<ul>
+<li>mutations_dataframe: A pandas DataFrame where mutations are listed. (default: not set) (pandas.DataFrame)</li>
+<li>sample_names: A list of sample names to plot results for, a subset of the list in “bam_filename” attribute. (default: not set) (list)</li>
+<li>mutations_filaname: the path to the file where mutations are stored (default: not set) (str)</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.calculate_and_plot_DNV_heatmap">
+<code class="descname">calculate_and_plot_DNV_heatmap</code><span class="sig-paren">(</span><em>unique_only=True</em>, <em>return_string=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.calculate_and_plot_DNV_heatmap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates and plots the DNV spectra as a heatmap of the samples listed in attribute bam_filename.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>unique_only</strong> – If True, only unique mutations are plotted for each sample. (default: True) (boolean)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+<li><strong>kwargs</strong> – keyword arguments for MutationCaller attributes</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a list of base64 encoded strings of the images. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.calculate_and_plot_DNV_spectrum">
+<code class="descname">calculate_and_plot_DNV_spectrum</code><span class="sig-paren">(</span><em>unique_only=True</em>, <em>return_string=False</em>, <em>normalize_to_1=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.calculate_and_plot_DNV_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates and plots the DNV spectra of the samples listed in attribute bam_filename.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>unique_only</strong> – If True, only unique mutations are plotted for each sample. (default: True) (boolean)</li>
+<li><strong>normalize_to_1</strong> – If True, results are plotted as percentages, instead of counts. (default: False) (bool)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+<li><strong>kwargs</strong> – keyword arguments for MutationCaller attributes</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a list of base64 encoded strings of the images. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.calculate_and_plot_SNV_spectrum">
+<code class="descname">calculate_and_plot_SNV_spectrum</code><span class="sig-paren">(</span><em>unique_only=True</em>, <em>normalize_to_1=False</em>, <em>return_string=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.calculate_and_plot_SNV_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates and plots the SNV spectra of the samples listed in attribute bam_filename.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>unique_only</strong> – If True, only unique mutations are plotted for each sample. (default: True) (boolean)</li>
+<li><strong>normalize_to_1</strong> – If True, results are plotted as percentages, instead of counts. (default: False) (bool)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+<li><strong>kwargs</strong> – keyword arguments for MutationCaller attributes</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a list of base64 encoded strings of the images. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.calculate_and_plot_indel_spectrum">
+<code class="descname">calculate_and_plot_indel_spectrum</code><span class="sig-paren">(</span><em>unique_only=True</em>, <em>normalize_to_1=False</em>, <em>return_string=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.calculate_and_plot_indel_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates and plots the indel spectra of the samples listed in attribute bam_filename.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>unique_only</strong> – If True, only unique mutations are plotted for each sample. (default: True) (boolean)</li>
+<li><strong>normalize_to_1</strong> – If True, results are plotted as percentages, instead of counts. (default: False) (bool)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+<li><strong>kwargs</strong> – keyword arguments for MutationCaller attributes</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a list of base64 encoded strings of the images. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.calculate_indel_spectrum">
+<code class="descname">calculate_indel_spectrum</code><span class="sig-paren">(</span><em>unique_only=True</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.calculate_indel_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Calculates the indel spectrum from the dataframe of relevant mutations, using the fasta file of the reference genome.
+Results are stored in the IDspectra attribute of the object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>unique_only</strong> – If True, only unique mutations are plotted for each sample. (default: True) (boolean)</li>
+<li><strong>kwargs</strong> – keyword arguments for MutationCaller attributes</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.check_pileup">
+<code class="descname">check_pileup</code><span class="sig-paren">(</span><em>chrom_list</em>, <em>from_pos_list</em>, <em>to_pos_list</em>, <em>print_original=True</em>, <em>savetofile=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.check_pileup" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads pileup information for a list of genomic regions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>chrom_list</strong> – List of chromosomes for the regions. (list of str)</li>
+<li><strong>from_pos_list</strong> – List of starting positions for the regions. (list of int)</li>
+<li><strong>to_pos_list</strong> – List of ending positions for the regions. (list of int)</li>
+<li><strong>print_original</strong> – If True, prints the original string generated with samtools mpileup as well (default: True) (bool)</li>
+<li><strong>savetofile</strong> – If savetofile is specified, results will be writted to that path. Otherwise, results are written to [output_dir]/checkPileup_tmp.csv (default: None) (str)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">df: The processed results of the pileup, containing information on all samples in a pandas.DataFrame.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.decompose_DNV_spectra">
+<code class="descname">decompose_DNV_spectra</code><span class="sig-paren">(</span><em>sample_names=None</em>, <em>unique_only=True</em>, <em>signatures_file=None</em>, <em>equal_initial_proportions=False</em>, <em>tol=0.0001</em>, <em>max_iter=1000</em>, <em>filter_percent=0</em>, <em>filter_count=0</em>, <em>keep_top_n=None</em>, <em>use_signatures=None</em>, <em>ignore_signatures=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.decompose_DNV_spectra" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the whole pipeline of decomposing DNV spectra for the samples specified in sample_names.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>sample_names</strong> – The list of sample names analysed. (list of str)</li>
+<li><strong>unique_only</strong> – If True, only unique mutations are used to construct the original spectrum.</li>
+<li><strong>signatures_file</strong> – The path to the csv file containing the signature matrix. (str)</li>
+<li><strong>equal_initial_proportions</strong> – If True, initial weights are initialized to be equal for all reference signature. Otherwise, they are initialized so the signatures with large cosine similarity with the original spectrum get larger weights. (default: False) (bool)</li>
+<li><strong>tol</strong> – The maximal difference between the proportions for convergence to be True. (default: 0.0001) (float)</li>
+<li><strong>max_iter</strong> – The maximum number of iterations (default: 1000) (int)</li>
+<li><strong>filter_percent</strong> – Filter signatures, that contribute less than filter_percent of the mutations in the sample. (default: 0) (float)</li>
+<li><strong>filter_count</strong> – Filter signatures, that contribute less than filter_count number of mutations in the sample. (default: 0) (int)</li>
+<li><strong>keep_top_n</strong> – Only keep those signatures that contribute to the mixture with the top keep_top_n number of mutation. (default: None) (int)</li>
+<li><strong>use_signatures</strong> – Use a specific subset of all signatures. A list of signature names. (default: None) (list of str)</li>
+<li><strong>ignore_signatures</strong> – Exclude a specific subset of all signatures from the analysis. A list of signature  names. (default: None) (list of str)</li>
+<li><strong>kwargs</strong> – keyword arguments for MutationDetection object attributes</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The final proportions of all signatures in the mixture. (Filtered out or not used signatures appear with a proportion of zero.) (numpy.array)</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.decompose_SNV_spectra">
+<code class="descname">decompose_SNV_spectra</code><span class="sig-paren">(</span><em>sample_names=None</em>, <em>unique_only=True</em>, <em>signatures_file=None</em>, <em>equal_initial_proportions=False</em>, <em>tol=0.0001</em>, <em>max_iter=1000</em>, <em>filter_percent=0</em>, <em>filter_count=0</em>, <em>keep_top_n=None</em>, <em>use_signatures=None</em>, <em>ignore_signatures=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.decompose_SNV_spectra" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the whole pipeline of decomposing SNV spectra for the samples specified in sample_names.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>sample_names</strong> – The list of sample names analysed. (list of str)</li>
+<li><strong>unique_only</strong> – If True, only unique mutations are used to construct the original spectrum.</li>
+<li><strong>signatures_file</strong> – The path to the csv file containing the signature matrix. (str)</li>
+<li><strong>equal_initial_proportions</strong> – If True, initial weights are initialized to be equal for all reference signature. Otherwise, they are initialized so the signatures with large cosine similarity with the original spectrum get larger weights. (default: False) (bool)</li>
+<li><strong>tol</strong> – The maximal difference between the proportions for convergence to be True. (default: 0.0001) (float)</li>
+<li><strong>max_iter</strong> – The maximum number of iterations (default: 1000) (int)</li>
+<li><strong>filter_percent</strong> – Filter signatures, that contribute less than filter_percent of the mutations in the sample. (default: 0) (float)</li>
+<li><strong>filter_count</strong> – Filter signatures, that contribute less than filter_count number of mutations in the sample. (default: 0) (int)</li>
+<li><strong>keep_top_n</strong> – Only keep those signatures that contribute to the mixture with the top keep_top_n number of mutation. (default: None) (int)</li>
+<li><strong>use_signatures</strong> – Use a specific subset of all signatures. A list of signature names. (default: None) (list of str)</li>
+<li><strong>ignore_signatures</strong> – Exclude a specific subset of all signatures from the analysis. A list of signature names. (default: None) (list of str)</li>
+<li><strong>kwargs</strong> – keyword arguments for MutationDetection object attributes</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The final proportions of all signatures in the mixture. (Filtered out or not used signatures appear with a proportion of zero.) (numpy.array)</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.decompose_indel_spectra">
+<code class="descname">decompose_indel_spectra</code><span class="sig-paren">(</span><em>sample_names=None</em>, <em>unique_only=True</em>, <em>signatures_file=None</em>, <em>equal_initial_proportions=False</em>, <em>tol=0.0001</em>, <em>max_iter=1000</em>, <em>filter_percent=0</em>, <em>filter_count=0</em>, <em>keep_top_n=None</em>, <em>use_signatures=None</em>, <em>ignore_signatures=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.decompose_indel_spectra" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the whole pipeline of decomposing indel spectra for the samples specified in sample_names.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>sample_names</strong> – The list of sample names analysed. (list of str)</li>
+<li><strong>unique_only</strong> – If True, only unique mutations are used to construct the original spectrum.</li>
+<li><strong>signatures_file</strong> – The path to the csv file containing the signature matrix. (str)</li>
+<li><strong>equal_initial_proportions</strong> – If True, initial weights are initialized to be equal for all reference signature. Otherwise, they are initialized so the signatures with large cosine similarity with the original spectrum get larger weights. (default: False) (bool)</li>
+<li><strong>tol</strong> – The maximal difference between the proportions for convergence to be True. (default: 0.0001) (float)</li>
+<li><strong>max_iter</strong> – The maximum number of iterations (default: 1000) (int)</li>
+<li><strong>filter_percent</strong> – Filter signatures, that contribute less than filter_percent of the mutations in the sample. (default: 0) (float)</li>
+<li><strong>filter_count</strong> – Filter signatures, that contribute less than filter_count number of mutations in the sample. (default: 0) (int)</li>
+<li><strong>keep_top_n</strong> – Only keep those signatures that contribute to the mixture with the top keep_top_n number of mutation. (default: None) (int)</li>
+<li><strong>use_signatures</strong> – Use a specific subset of all signatures. A list of signature names. (default: None) (list of str)</li>
+<li><strong>ignore_signatures</strong> – Exclude a specific subset of all signatures from the analysis. A list of signature names. (default: None) (list of str)</li>
+<li><strong>kwargs</strong> – keyword arguments for MutationDetection object attributes</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">The final proportions of all signatures in the mixture. (Filtered out or not used signatures appear with a proportion of zero.) (numpy.array)</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.get_details_for_mutations">
+<code class="descname">get_details_for_mutations</code><span class="sig-paren">(</span><em>mutations_filename=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.get_details_for_mutations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Get detailed results for the list of mutations contained in the mutations attribute of the object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>mutations_filename</strong> – The path(s) to the file(s) where mutations are stored. (default: None) (list of str)</li>
+<li><strong>kwargs</strong> – <p>keyword arguments for MutationDetection object attributes</p>
+<ul>
+<li>mutations_dataframe: A pandas DataFrame where mutations are listed. (default: not set) (pandas.DataFrame)</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">df_joined: A dataframe containing the detailed results. (pandas.DataFrame)</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.load_mutations">
+<code class="descname">load_mutations</code><span class="sig-paren">(</span><em>filename=None</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.load_mutations" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads mutations from a file or a list of files into the mutations attribute.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>filename</strong> – The path to the file, where mutations are stored. A list of paths can be also supplied, in this case, all of them will be loaded to a single dataframe. The mutations attribute of the MutationDetection object will be set to the loaded dataframe. If None, the file [output_dir]/filtered_mutations.csv will be loaded. (default: None) (str)</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.optimize_results">
+<code class="descname">optimize_results</code><span class="sig-paren">(</span><em>control_samples</em>, <em>FPs_per_genome</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.optimize_results" title="Permalink to this definition">¶</a></dt>
+<dd><p>Optimizes the list of detected mutations according to the list of control samples and desired level of false positives set by the user.
+Filtered results will be loaded to the mutations attribute of the MutationDetection object as a pandas.DataFrame. Optimized values for the
+score are stored in the attribute optimized_score_values.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>control_samples</strong> – List of sample names that should be used as control samples in the sense, that no unique mutations are expected in them. (The sample names listed here must match a subset of the sample names listed in the attribute bam_filename.) (list of str)</li>
+<li><strong>FPs_per_genome</strong> – The total number of false positives tolerated in a control sample. (int)</li>
+<li><strong>kwargs</strong> – <p>possible keyword arguments besides MutationCaller attributes:</p>
+<ul>
+<li>plot_roc_curve: If True, ROC curves will be plotted as a visual representation of the optimization process. (default: False) (boolean)</li>
+<li>plot_tuning_curve: If True, tuning curves displaying the number of mutations found in different samples with different score filters will be plotted as a visual representation of the optimization process. (default: False) (boolean)</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.plot_DNV_heatmap">
+<code class="descname">plot_DNV_heatmap</code><span class="sig-paren">(</span><em>return_string=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.plot_DNV_heatmap" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the DNV spectra as a heatmap for the samples in attribute bam_filename.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">If the return_string value is True, a list of base64 encoded strings of the images. Otherwise, a list of matplotlib figures.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.plot_DNV_spectrum">
+<code class="descname">plot_DNV_spectrum</code><span class="sig-paren">(</span><em>return_string=False</em>, <em>normalize_to_1=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.plot_DNV_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the DNV spectra for the samples in attribute bam_filename.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>normalize_to_1</strong> – If True, results are plotted as percentages, instead of counts. (default: False) (bool)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a list of base64 encoded strings of the images. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.plot_SNV_spectrum">
+<code class="descname">plot_SNV_spectrum</code><span class="sig-paren">(</span><em>return_string=False</em>, <em>normalize_to_1=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.plot_SNV_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the triplet spectra for the samples in attribute bam_filename.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>normalize_to_1</strong> – If True, results are plotted as percentages, instead of counts. (default: False) (bool)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a list of base64 encoded strings of the images. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.plot_hierarchical_clustering">
+<code class="descname">plot_hierarchical_clustering</code><span class="sig-paren">(</span><em>mutations_dataframe=None</em>, <em>return_string=False</em>, <em>mutations_filename=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.plot_hierarchical_clustering" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a heatmap based on the number of shared mutations found in all possible sample pairs.
+A dendrogram is also added that is the result of hierarchical clustering of the samples.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+<li><strong>mutations_filename</strong> – The path to the file, where mutations are stored, if the mutations attribute of the object does not exist, its value will be set to the file defined here. (default: None) (str)</li>
+<li><strong>mutations_dataframe</strong> – If the mutations are not to be loaded from a file, but are contained in a pandas.DataFrame, this can be supplied with setting the mutations_dataframe parameter. (default: None) (pandas.DataFrame)</li>
+<li><strong>kwargs</strong> – keyword arguments for MutationDetection object attributes</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a base64 encoded string of the image. Otherwise, a matplotlib figure.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.plot_indel_spectrum">
+<code class="descname">plot_indel_spectrum</code><span class="sig-paren">(</span><em>return_string=False</em>, <em>normalize_to_1=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.plot_indel_spectrum" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the indel spectra for the samples in attribute bam_filename.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>normalize_to_1</strong> – If True, results are plotted as percentages, instead of counts. (default: False) (bool)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a list of base64 encoded strings of the images. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.plot_mutation_counts">
+<code class="descname">plot_mutation_counts</code><span class="sig-paren">(</span><em>unique_only=False</em>, <em>return_string=False</em>, <em>mutations_filename=None</em>, <em>mutations_dataframe=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.plot_mutation_counts" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the number of mutations found in all the samples in different ploidy regions.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>unique_only</strong> – If True, only unique mutations are plotted for each sample. (default: False) (boolean)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+<li><strong>mutations_filename</strong> – The path to the file, where mutations are stored, if the mutations attribute of the object does not exist, its value will be set to the file defined here. (default: None) (str)</li>
+<li><strong>mutations_dataframe</strong> – If the mutations are not to be loaded from a file, but are contained in a pandas.DataFrame, this can be supplied with setting the mutations_dataframe parameter. (default: None) (pandas.DataFrame)</li>
+<li><strong>kwargs</strong> – <p>possible keyword arguments besides MutationCaller attributes</p>
+<ul>
+<li>control_samples: List of sample names that should be used as control samples in the sense, that no unique mutations are expected in them. (The sample names listed here must match a subset of the sample names listed in bam_filename.) (list of str)</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a base64 encoded string of the image. Otherwise, a matplotlib figure.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.plot_rainfall">
+<code class="descname">plot_rainfall</code><span class="sig-paren">(</span><em>unique_only=True</em>, <em>return_string=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.plot_rainfall" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots the rainfall plot of mutations found in the samples listed in the attribute bam_filename. Displaying rainfall plots is a good
+practice to detect mutational clusters throughout the genome. The horizontal axis is the genomic position of each mutation,
+while the vertical shows the genomic distance between the mutation and the previous one. Thus mutations that are clustered together appear
+close to each other horizontally and on the lower part of the plot vertically.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>unique_only</strong> – If True, only unique mutations are plotted for each sample. (default: True) (boolean)</li>
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: False) (bool)</li>
+<li><strong>kwargs</strong> – <p>keyword arguments for MutationCaller attributes</p>
+<ul>
+<li>mutations_dataframe: A pandas DataFrame where mutations are listed. (default: not set) (pandas.DataFrame)</li>
+<li>sample_names: A list of sample names to plot results for, a subset of the list in “bam_filename” attribute. (default: not set) (list)</li>
+<li>mut_types: list of mutation types to display (default: not set, displaying SNVs, insertions and deletions) (a list containing any combination of these items: [‘SNV’, ‘INS’, ‘DEL’])</li>
+<li>plot_range: The genomic range to plot. (default: not set) (str, example: “chr9:2342-24124”)</li>
+</ul>
+</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a list of base64 encoded strings of the images. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.mutationcalling.MutationCaller.run_isomut2_mutdet">
+<code class="descname">run_isomut2_mutdet</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.mutationcalling.MutationCaller.run_isomut2_mutdet" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs IsoMut2 mutation detection pipeline on the MutationDetection object, using parameter values specified in the respective attributes of
+the object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – keyword arguments for MutationDetection object attributes</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/logo_Large.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="index.html">isomut2py</a></h1>
+
+
+
+<p class="blurb">Comprehensive detection and analysis of genomic mutations from NGS sequencing data</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="use_cases.html">General use cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="external_mutations.html">Importing external mutations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PE_advanced.html">Advanced ploidy estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="postprocessing.html">Further analysis, visualization</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="code.html">API reference</a><ul class="current">
+<li class="toctree-l2 current"><a class="current reference internal" href="#">MutationCaller object</a></li>
+<li class="toctree-l2"><a class="reference internal" href="code_ploidy_estimation.html">PloidyEstimator object</a></li>
+<li class="toctree-l2"><a class="reference internal" href="code_plotting_functions.html">Functions for plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="code_postprocessing_functions.html">Functions for postprocessing lists of mutations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="code_technical_functions.html">Technical (formatting, IO, etc.) functions</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="code.html">API reference</a><ul>
+      <li>Previous: <a href="code.html" title="previous chapter">API reference</a></li>
+      <li>Next: <a href="code_ploidy_estimation.html" title="next chapter">PloidyEstimator object</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Orsolya Pipek.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/code_mutation_calling.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

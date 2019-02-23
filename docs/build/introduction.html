@@ -1,0 +1,203 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Introduction &#8212; isomut2py 2.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="shortcut icon" href="_static/icon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Getting started" href="getting_started.html" />
+    <link rel="prev" title="Welcome to isomut2py’s documentation!" href="index.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="Introduction">
+<h1>Introduction<a class="headerlink" href="#Introduction" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="IsoMut2py:-a-python-module-for-the-comprehensive-detection-and-analysis-of-genomic-mutations">
+<h2>IsoMut2py: a python module for the comprehensive detection and analysis of genomic mutations<a class="headerlink" href="#IsoMut2py:-a-python-module-for-the-comprehensive-detection-and-analysis-of-genomic-mutations" title="Permalink to this headline">¶</a></h2>
+<p>IsoMut2py is an easy-to-use tool for the detection and postprocessing of
+mutations from raw NGS sequencing data. It takes sets of aligned reads
+(BAM files) as its input and can explore and compare the karyotypes of
+different samples, detect single nucleotide variations (SNVs),
+insertions and deletions (indels) in single or multiple samples,
+optimize the identified mutations whenever provided with a list of
+control samples, plot mutation counts and spectra on readily
+interpretable charts and decompose them to predefined reference
+signatures.</p>
+<p>IsoMut2py is an updated version of the original
+<a class="reference external" href="https://github.com/genomicshu/isomut">IsoMut</a> software, mainly
+implemented in python. The most time-consuming parts of the workflow are
+however written in C.</p>
+</div>
+<div class="section" id="Features">
+<h2>Features<a class="headerlink" href="#Features" title="Permalink to this headline">¶</a></h2>
+<ul class="simple">
+<li>easy installation with dependencies using <code class="docutils literal notranslate"><span class="pre">pip</span></code></li>
+<li><strong>karyotype exploration</strong> for a single sample, using a Bayesian
+approach</li>
+<li><strong>karyotype comparison</strong> between sample pairs, for a naive
+identification of CNVs</li>
+<li><strong>karyotype plots</strong>, <strong>coverage histograms</strong></li>
+<li><strong>SNV</strong> and <strong>indel</strong> detection in <strong>single or multiple samples</strong></li>
+<li>detection of both <strong>unique and shared mutations</strong></li>
+<li>refined mutation detection based on local ploidy information</li>
+<li><strong>automatic optimization</strong> based on the user-defined list of control
+samples with easily interpretable figures as sanity checks</li>
+<li>option for loading and filtering a preexisting set of mutations</li>
+<li><strong>basic hierarchical clustering</strong> of samples based on the number of
+shared mutations</li>
+<li><strong>plots of SBS, DBS and ID spectra</strong>
+<a class="reference external" href="https://www.biorxiv.org/content/early/2018/05/15/322859">source</a></li>
+<li><strong>decomposition of SBS, DBS and ID spectra</strong> to a mixture of
+reference signatures using expectation maximization</li>
+<li><strong>signature composition plots</strong></li>
+<li>straightforward querying of details of samples in mutated positions</li>
+</ul>
+</div>
+<div class="section" id="Dependencies">
+<h2>Dependencies<a class="headerlink" href="#Dependencies" title="Permalink to this headline">¶</a></h2>
+<ol class="arabic simple">
+<li><strong>samtools</strong>: In order to use the functions for mutation calling or
+ploidy estimation, samtools needs to be installed. However, plotting
+and filtering of mutations is available without samtools.</li>
+<li>pandas</li>
+<li>numpy</li>
+<li>scipy</li>
+<li>matplotlib</li>
+<li>pymc3</li>
+<li>theano</li>
+<li>seaborn</li>
+<li>biopython</li>
+</ol>
+<p>Other than <strong>samtools</strong>, all dependencies can be automatically installed
+using <code class="docutils literal notranslate"><span class="pre">pip</span></code>.</p>
+</div>
+<div class="section" id="Authors">
+<h2>Authors<a class="headerlink" href="#Authors" title="Permalink to this headline">¶</a></h2>
+<p>Most of the code has been written by Orsolya Pipek, although the C code
+directly inherited from the original
+<a class="reference external" href="https://github.com/genomicshu/isomut">IsoMut</a> software has been
+written by Dezso Ribli.</p>
+<p>The whole project was done in collaboration of:</p>
+<ul class="simple">
+<li>Department of Physics of Complex Systems, Eotvos Lorand University
+(Orsolya Pipek, Dezso Ribli, Istvan Csabai)</li>
+<li>Institute of Enzymology, Research Centre for Natural Sciences,
+Hungarian Academy of Sciences (Adam Poti, David Szuts)</li>
+<li>Center for Biological Sequence Analysis, Department of Systems
+Biology, Technical University of Denmark (Zoltan Szallasi)</li>
+</ul>
+<p>Implementation of the Fisher’s exact test in C was borrowed from
+<a class="reference external" href="https://github.com/chrchang/stats">Christopher Chang</a>.</p>
+</div>
+<div class="section" id="How-to-cite">
+<h2>How to cite<a class="headerlink" href="#How-to-cite" title="Permalink to this headline">¶</a></h2>
+<p>Coming soon.</p>
+</div>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/logo_Large.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="index.html">isomut2py</a></h1>
+
+
+
+<p class="blurb">Comprehensive detection and analysis of genomic mutations from NGS sequencing data</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1 current"><a class="current reference internal" href="#">Introduction</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#IsoMut2py:-a-python-module-for-the-comprehensive-detection-and-analysis-of-genomic-mutations">IsoMut2py: a python module for the comprehensive detection and analysis of genomic mutations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Features">Features</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Dependencies">Dependencies</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#Authors">Authors</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#How-to-cite">How to cite</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="use_cases.html">General use cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="external_mutations.html">Importing external mutations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PE_advanced.html">Advanced ploidy estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="postprocessing.html">Further analysis, visualization</a></li>
+<li class="toctree-l1"><a class="reference internal" href="code.html">API reference</a></li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="index.html" title="previous chapter">Welcome to isomut2py’s documentation!</a></li>
+      <li>Next: <a href="getting_started.html" title="next chapter">Getting started</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Orsolya Pipek.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/introduction.ipynb.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

@@ -1,0 +1,419 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>PloidyEstimator object &#8212; isomut2py 2.0.1 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script async="async" type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script>
+    <link rel="shortcut icon" href="_static/icon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Functions for plotting" href="code_plotting_functions.html" />
+    <link rel="prev" title="MutationCaller object" href="code_mutation_calling.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-isomut2py.ploidyestimation">
+<span id="ploidyestimator-object"></span><h1>PloidyEstimator object<a class="headerlink" href="#module-isomut2py.ploidyestimation" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator">
+<em class="property">class </em><code class="descclassname">isomut2py.ploidyestimation.</code><code class="descname">PloidyEstimator</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator" title="Permalink to this definition">¶</a></dt>
+<dd><p>The PloidyEstimator class is designed to keep all parameter values, directories and filepaths in one place that are needed for the ploidy
+analysis of a single sample.</p>
+<ul class="simple">
+<li><dl class="first docutils">
+<dt>List of basic parameters:</dt>
+<dd><ul class="first last">
+<li>ref_fasta: The path to the fasta file of the reference genome. (str)</li>
+<li>output_dir: The path to a directory that can be used for temporary files and output files. The user must have permission to write the directory. (str)</li>
+<li>input_dir: The path to the directory, where the bam file(s) of the sample(s) is/are located. (str)</li>
+<li>bam_filename: The name of the bam file of the sample. (Without path, eg. “sample_1.bam”.) (str)</li>
+<li>samtools_fullpath: The path to samtools on the computer. (default: “samtools”) (str)</li>
+</ul>
+</dd>
+</dl>
+</li>
+<li><dl class="first docutils">
+<dt>Other parameters with default values:</dt>
+<dd><ul class="first last">
+<li>n_min_block: The approximate number of blocks to partition the analysed genome to for  parallel computing. The actual number might be slightly larger that this. (default: 200) (int)</li>
+<li>n_conc_blocks: The number of blocks to process at the same time. (default: 4) (int)</li>
+<li>chromosomes: The list of chromosomes to analyse. (default: all chromosomes included included in the reference genome specified in ref_fasta) (list of str)</li>
+<li>windowsize: The windowsize used for initial coverage smoothing of the bam file with a moving average method. Setting it too large might disguise CNV effects. (default: 10000) (int)</li>
+<li>shiftsize: The shiftsize used for the moving average method of the initial coverage smoothing procedure. MUST be smaller than windowsize. (default: 3000) (int)</li>
+<li>min_noise: The minimum frequency of non-reference or reference bases detected for a position to be considered for LOH detection. Setting it too small will result in poor noise filtering, setting it too large will result in a decreased number of measurement points. (default: 0.1) (float in range(0,1))</li>
+<li>base_quality_limit: The base quality limit used by samtools in order to decide if a base should be included in the pileup file. (default: 0) (int)</li>
+<li>print_every_nth: Even though LOH detection is limited to the positions with a noise level larger that min_noise, ploidy estimation is based on all the genomic positions meeting the above set criteria. By setting the attribute print_every_nth, the number of positions used can be controlled. Setting it large will result in overlooking ploidy variations in shorter genomic ranges, while setting it too small can cause an increase in both memory usage and computation time. Decrease only if a relatively short genome is analysed. (default: 100) (int)</li>
+<li>windowsize_PE: The windowsize used for actual ploidy estimation after the initial coverage smoothing. (default: 1000000) (int)</li>
+<li>shiftsize_PE: The shiftsize used for actual ploidy estimation after the initial coverage smoothing. MUST be smaller than windowsize_PE. (default: 50000) (int)</li>
+<li>cov_max: The maximum coverage in a genomic position that can be considered for ploidy estimation. Alignment errors might cause certain genomic positions to have an enormous coverage. These outliers are ignored, when cov_max is set. The value must be set in agreement with the average sequencing depth. Using a low value for a deeply sequenced sample can result in a decreased number of positions to be analysed. (default: 200) (int)</li>
+<li>cov_min: The minimum coverage in a genomic position that can be considered for ploidy estimation. Sequencing noise might cause certain genomic positions to have very low coverage, frequently merely from misaligned reads. These outliers are ignored, when cov_min is set. The value must be set in agreement with the average sequencing depth. Using a high value for a shallowly sequenced sample can result in a decreased number of positions to be analysed. (default: 5) (int)</li>
+<li>hc_percentile: The haploid coverage of the sequenced sample is estimated multiple times by fitting a mixture model to the coverage distribution of the sample. The actual value is chosen as a statistical measure of these multiple results, set by the value of hc_percentile. For example, setting hc_percentile to 50 results in using the median of the results. For more details on the suggested values, see Pipek et al. 2018. (default: 75) (int)</li>
+<li>compare_to_bed: The path to a bed file to compare ploidy estimation results to. (default: None) (str)</li>
+<li>samtools_flags: The samtools flags to be used for pileup file generation. (default: ” -B -d 1000 “) (str)</li>
+<li>user_defined_hapcov: During ploidy estimation, the haploid coverage is estimated from the coverage distribution of the sample. In some cases, the estimation might not find the real value of the haploid coverage. In these situations, supplying an estimate of the haploid coverage manually might improve the overall ploidy estimation results. If you have a generally diploid genome, using the half of the average coverage can be a good starting point. If user_defined_hapcov is set, hc_percentile is ignored. (default: None) (float)</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<dl class="method">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator.PE_on_chrom">
+<code class="descname">PE_on_chrom</code><span class="sig-paren">(</span><em>chrom</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator.PE_on_chrom" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs the whole ploidy estimation pipeline on a given chromosome, using the appropriate attributes of the PloidyEstimation object by running PE_on_range() multiple times.
+Prints the results to the file: [self.output_dir]/PE_fullchrom_[chrom].txt.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>chrom</strong> – the name of the chromosome to analyse (str)</li>
+<li><strong>kwargs</strong> – keyword arguments for PloidyEstimator object</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator.PE_on_whole_genome">
+<code class="descname">PE_on_whole_genome</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator.PE_on_whole_genome" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs the whole ploidy estimation pipeline on the whole genome by running PE_on_chrom() on all chromosomes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – keyword arguments for PloidyEstimator object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator.compare_with_other">
+<code class="descname">compare_with_other</code><span class="sig-paren">(</span><em>other</em>, <em>minLen=2000</em>, <em>minQual=0.1</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator.compare_with_other" title="Permalink to this definition">¶</a></dt>
+<dd><p>Compare ploidy estimation results with another PloidyEstimation object or a bed file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>other</strong> – The other PloidyEstimation object or the path to the other bedfile. (isomut2py.PloidyEstimation or str)</li>
+<li><strong>minLen</strong> – The minimum length of a region to be considered different from the other object or file. (int)</li>
+<li><strong>minQual</strong> – The minimum quality of a region to be considered different from the other object or file. (float)</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator.estimate_hapcov_infmix">
+<code class="descname">estimate_hapcov_infmix</code><span class="sig-paren">(</span><em>level=0</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator.estimate_hapcov_infmix" title="Permalink to this definition">¶</a></dt>
+<dd><p>Estimates the haploid coverage of the sample from the appropriate attributes of the PloidyEstimation object.
+If the user_defined_hapcov attribute is set manually, it sets the value of estimated_hapcov to that. Otherwise, a many-component (20)
+Gaussian mixture model is fitted to the coverage histogram of the sample 10 times. Each time, the haploid coverage is estimated from the
+center of the component with the maximal weight in the model. The final estimate of the haploid coverage is calculated as the qth
+percentile of the 10 measurements, with q = hc_percentile. Sets the “estimated_hapcov” attribute to the calculated haploid coverage and the “coverage_sample” attribute to a 2000-element sample of the coverage distribution.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>level</strong> – the level of indentation used in verbose output (default: 0) (int)</li>
+<li><strong>kwargs</strong> – keyword arguments for PloidyEstimator object</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator.fit_gaussians">
+<code class="descname">fit_gaussians</code><span class="sig-paren">(</span><em>level=0</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator.fit_gaussians" title="Permalink to this definition">¶</a></dt>
+<dd><p>Fits a 7-component Gaussian mixture model to the coverage distribution of the sample, using the appropriate attributes of the
+PloidyEstimation object. The center of the first Gaussian is initialized from a narrow region around the value of the estimated_hapcov
+attribute. The centers of the other Gaussians are initialized in a region around the value of estimated_hapcov multiplied by consecutive
+whole numbers.</p>
+<p>The parameters of the fitted model (center, sigma and weight) for all seven Gaussians are both saved to the GaussDistParams.pkl file (in
+output_dir, for later reuse) and set as the value of the distribution_dict attribute.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>level</strong> – the level of indentation used in verbose output (default: 0) (int)</li>
+<li><strong>kwargs</strong> – keyword arguments for PloidyEstimator object</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator.generate_HTML_report_for_ploidy_est">
+<code class="descname">generate_HTML_report_for_ploidy_est</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator.generate_HTML_report_for_ploidy_est" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generates a HTML file with figures displaying the results of ploidy estimation and saves it to output_dir/PEreport.html.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – keyword arguments for PloidyEstimator object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator.get_bed_format_for_sample">
+<code class="descname">get_bed_format_for_sample</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator.get_bed_format_for_sample" title="Permalink to this definition">¶</a></dt>
+<dd><p>Creates bed file of constant ploidies for a given sample from a file of positional ploidy data. If the ownbed_filepath attribute of the
+PloidyEstimation object is set, saves the bedfile to the path specified there. Otherwise, saves it to the output_dir with the “_ploidy.bed” suffix.
+Also sets the bed_dataframe attribute to the pandas.Dataframe containing the bed file.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – keyword arguments for PloidyEstimator object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator.get_coverage_distribution">
+<code class="descname">get_coverage_distribution</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator.get_coverage_distribution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the coverage_sample attribute of the PloidyEstimation object to the coverage distribution obtained from the temporary files created by __PE_prepare_temp_files().
+Positions are filtered according to the attributes of the PloidyEstimation object. The number of positions in the final sample is decreased to 2000 for faster inference.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – keyword arguments for PloidyEstimator object</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">A 2000-element sample of the coverage distribution.</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator.load_bedfile_from_file">
+<code class="descname">load_bedfile_from_file</code><span class="sig-paren">(</span><em>filename=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator.load_bedfile_from_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads the bedfile containing previous ploidy estimated for the given sample from the path specified in filename. The dataframe will be
+stored in the “bed_dataframe” attribute.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>filename</strong> – The path to the bedfile. (default: [output_dir]/[bam_filename]_ploidy.bed) (str)</li>
+<li><strong>kwargs</strong> – keyword arguments for PloidyEstimator object</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator.load_cov_distribution_parameters_from_file">
+<code class="descname">load_cov_distribution_parameters_from_file</code><span class="sig-paren">(</span><em>filename=None</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator.load_cov_distribution_parameters_from_file" title="Permalink to this definition">¶</a></dt>
+<dd><p>Loads the parameters of the seven fitted Gaussians to the coverage distribution of the sample from the specified filename (that was saved
+with pickle beforehand). If one such file is available, the computationally expensive ploidy estimation process can be skipped. The
+parameter values will be stored in the attribute “distribution_dict” as a dictionary.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first last simple">
+<li><strong>filename</strong> – The path to the file with the coverage distribution parameters. (default: [output_dir]/GaussDistParams.pkl) (str)</li>
+<li><strong>kwargs</strong> – keyword arguments for PloidyEstimator object</li>
+</ul>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator.plot_coverage_distribution">
+<code class="descname">plot_coverage_distribution</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator.plot_coverage_distribution" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plot the coverage distribution of the sample.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – keyword arguments for PloidyEstimator object</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a matplotlib figure of the coverage distribution</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator.plot_karyotype_for_all_chroms">
+<code class="descname">plot_karyotype_for_all_chroms</code><span class="sig-paren">(</span><em>return_string=False</em>, <em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator.plot_karyotype_for_all_chroms" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots karyotype information (coverage, estimated ploidy, estimated LOH, reference base frequencies) about the sample for all analysed
+chromosomes.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><ul class="first simple">
+<li><strong>return_string</strong> – If True, only a temporary plot is generated and its base64 code is returned, that can be included in HTML files. (default: True) (bool)</li>
+<li><strong>kwargs</strong> – keyword arguments for PloidyEstimator object</li>
+</ul>
+</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body"><p class="first last">If the return_string value is True, a list of base64 encoded strings of the images. Otherwise, a list of matplotlib figures.</p>
+</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator.plot_karyotype_summary">
+<code class="descname">plot_karyotype_summary</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator.plot_karyotype_summary" title="Permalink to this definition">¶</a></dt>
+<dd><p>Plots a simple karyotype summary for the whole genome. (Details coming soon.)</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – keyword arguments for PloidyEstimator object</td>
+</tr>
+<tr class="field-even field"><th class="field-name">Returns:</th><td class="field-body">a matplotlib figure of the plot</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+<dl class="method">
+<dt id="isomut2py.ploidyestimation.PloidyEstimator.run_ploidy_estimation">
+<code class="descname">run_ploidy_estimation</code><span class="sig-paren">(</span><em>**kwargs</em><span class="sig-paren">)</span><a class="headerlink" href="#isomut2py.ploidyestimation.PloidyEstimator.run_ploidy_estimation" title="Permalink to this definition">¶</a></dt>
+<dd><p>Runs the whole ploidy estimation pipeline on the PloidyEstimation object.</p>
+<table class="docutils field-list" frame="void" rules="none">
+<col class="field-name" />
+<col class="field-body" />
+<tbody valign="top">
+<tr class="field-odd field"><th class="field-name">Parameters:</th><td class="field-body"><strong>kwargs</strong> – keyword arguments for PloidyEstimator object</td>
+</tr>
+</tbody>
+</table>
+</dd></dl>
+
+</dd></dl>
+
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+            <p class="logo"><a href="index.html">
+              <img class="logo" src="_static/logo_Large.png" alt="Logo"/>
+            </a></p>
+<h1 class="logo"><a href="index.html">isomut2py</a></h1>
+
+
+
+<p class="blurb">Comprehensive detection and analysis of genomic mutations from NGS sequencing data</p>
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="introduction.html">Introduction</a></li>
+<li class="toctree-l1"><a class="reference internal" href="getting_started.html">Getting started</a></li>
+<li class="toctree-l1"><a class="reference internal" href="use_cases.html">General use cases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="external_mutations.html">Importing external mutations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="PE_advanced.html">Advanced ploidy estimation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="postprocessing.html">Further analysis, visualization</a></li>
+<li class="toctree-l1 current"><a class="reference internal" href="code.html">API reference</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="code_mutation_calling.html">MutationCaller object</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">PloidyEstimator object</a></li>
+<li class="toctree-l2"><a class="reference internal" href="code_plotting_functions.html">Functions for plotting</a></li>
+<li class="toctree-l2"><a class="reference internal" href="code_postprocessing_functions.html">Functions for postprocessing lists of mutations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="code_technical_functions.html">Technical (formatting, IO, etc.) functions</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+  <li><a href="code.html">API reference</a><ul>
+      <li>Previous: <a href="code_mutation_calling.html" title="previous chapter">MutationCaller object</a></li>
+      <li>Next: <a href="code_plotting_functions.html" title="next chapter">Functions for plotting</a></li>
+  </ul></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+      <input type="hidden" name="check_keywords" value="yes" />
+      <input type="hidden" name="area" value="default" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2019, Orsolya Pipek.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 1.8.0</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.11</a>
+      
+      |
+      <a href="_sources/code_ploidy_estimation.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>
