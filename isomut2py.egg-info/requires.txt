@@ -1,0 +1,10 @@
+matplotlib==3.0.0
+pandas==0.20.3
+theano==1.0.5
+pymc3==3.2
+setuptools==33.1.1
+seaborn==0.8
+scipy==0.19.1
+numpy==1.12.1
+biopython
+joblib==0.11
